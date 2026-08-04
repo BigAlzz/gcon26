@@ -147,6 +147,26 @@ async function handle(request, response) {
       sendJson(response, 200, { notifications: state.notifications.filter((item) => item.userId === actor.userId) }, { 'x-request-id': id });
       return;
     }
+    if (request.method === 'GET' && url.pathname === '/v1/applicant/chat') {
+      requireRoles(actor, [ROLES.LEARNER]);
+      sendJson(response, 200, { messages: state.applicantChats?.[actor.userId] || [] }, { 'x-request-id': id });
+      return;
+    }
+    if (request.method === 'POST' && url.pathname === '/v1/applicant/chat') {
+      requireRoles(actor, [ROLES.LEARNER]);
+      const body = await readJson(request);
+      const message = String(body.message || '').trim().slice(0, 1000);
+      if (!message) throw Object.assign(new Error('A message is required'), { status: 400 });
+      state.applicantChats ||= {};
+      state.applicantChats[actor.userId] ||= [];
+      const application = state.applications.find((item) => item.ownerUserId === actor.userId);
+      const chatMessage = { id: crypto.randomUUID(), applicationRef: application?.ref || null, direction: 'outbound', channel: 'in_app', status: 'sent', sender: actor.name || 'Applicant', message, sentAt: new Date().toISOString() };
+      state.applicantChats[actor.userId].push(chatMessage);
+      addAudit(state, 'Applicant support chat message sent', actor, { ref: application?.ref || null, channel: 'in_app' });
+      await store.save();
+      sendJson(response, 201, { message: chatMessage, messages: state.applicantChats[actor.userId] }, { 'x-request-id': id });
+      return;
+    }
     if (request.method === 'GET' && url.pathname === '/v1/communications') {
       requireRoles(actor, [ROLES.ADMIN, ROLES.STAFF_REVIEWER, ROLES.STAFF_SUPERVISOR]);
       sendJson(response, 200, { communications: state.communications || [] }, { 'x-request-id': id });

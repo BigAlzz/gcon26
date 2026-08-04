@@ -36,6 +36,8 @@ const assets = Object.fromEntries(collectFiles(dist).map(({ relative, absolute }
   },
 ]));
 const demoState = createInitialStore();
+demoState.notifications.unshift({ id: 'site-demo-notification-learner', userId: 'user-learner-demo', applicationRef: 'GCON20270731-01', channel: 'in_app', status: 'sent', queuedAt: '2026-08-04T08:15:00.000Z', sentAt: '2026-08-04T08:15:00.000Z', provider: 'sites-hosted-demo', subject: 'Application received - GCON 2027', message: 'Your application was received and is under review. Keep your reference number for any correction requests or final outcomes.' });
+demoState.applicantChats ||= {};
 
 const worker = `
 const ASSETS = ${JSON.stringify(assets)};
@@ -80,6 +82,23 @@ async function api(request, url) {
     return json({ application: DEMO_STATE.applications.find((item) => item.ownerUserId === actor.userId) || null });
   }
   if (request.method === 'GET' && url.pathname === '/v1/notifications') return json({ notifications: DEMO_STATE.notifications.filter((item) => item.userId === actor.userId) });
+  if (request.method === 'GET' && url.pathname === '/v1/applicant/chat') {
+    if (actor.role !== 'learner') return json({ error: 'Learner access required' }, 403);
+    return json({ messages: DEMO_STATE.applicantChats?.[actor.userId] || [] });
+  }
+  if (request.method === 'POST' && url.pathname === '/v1/applicant/chat') {
+    if (actor.role !== 'learner') return json({ error: 'Learner access required' }, 403);
+    const body = await request.json().catch(() => ({}));
+    const message = String(body.message || '').trim().slice(0, 1000);
+    if (!message) return json({ error: 'A message is required' }, 400);
+    DEMO_STATE.applicantChats ||= {};
+    DEMO_STATE.applicantChats[actor.userId] ||= [];
+    const application = DEMO_STATE.applications.find((item) => item.ownerUserId === actor.userId);
+    const chatMessage = { id: 'site-demo-chat-' + Date.now(), applicationRef: application?.ref || null, direction: 'outbound', channel: 'in_app', status: 'sent', sender: actor.name || 'Applicant', message, sentAt: new Date().toISOString() };
+    DEMO_STATE.applicantChats[actor.userId].push(chatMessage);
+    DEMO_STATE.auditLog.unshift({ id: 'site-demo-chat-audit-' + Date.now(), time: chatMessage.sentAt, event: 'Applicant support chat message sent', actor: actor.name, actorUserId: actor.userId, organisationId: actor.organisationId, ref: application?.ref || null, channel: 'in_app' });
+    return json({ message: chatMessage, messages: DEMO_STATE.applicantChats[actor.userId] }, 201);
+  }
   if (request.method === 'GET' && url.pathname === '/v1/communications') return json({ communications: DEMO_STATE.communications });
   if (request.method === 'GET' && url.pathname === '/v1/audit') return json({ entries: DEMO_STATE.auditLog });
   if (request.method === 'GET' && url.pathname === '/v1/storage/status') return json({ provider: 'Sites hosted demo', mode: 'static-demo' });

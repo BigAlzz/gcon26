@@ -237,6 +237,17 @@
         "responses": { "200": { "description": "Notifications for the authenticated user" }, "401": { "$ref": "#/components/responses/Unauthorized" } }
       }
     },
+    "/v1/applicant/chat": {
+      "get": {
+        "tags": ["Learner"],
+        "responses": { "200": { "description": "In-app support messages for the authenticated learner" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" } }
+      },
+      "post": {
+        "tags": ["Learner"],
+        "requestBody": { "$ref": "#/components/requestBodies/ApplicantChatMessage" },
+        "responses": { "201": { "description": "Applicant message recorded in the in-app support conversation" }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" } }
+      }
+    },
     "/v1/audit": {
       "get": {
         "tags": ["Administration"],
@@ -275,12 +286,14 @@
       "InterviewOutcome": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["outcome"], "properties": { "outcome": { "type": "string", "enum": ["passed", "failed", "no_show", "pending"] }, "score": { "type": "string", "maxLength": 40 }, "notes": { "type": "string", "maxLength": 500 } }, "additionalProperties": false } } } },
       "TerminationLetter": { "required": false, "content": { "application/json": { "schema": { "type": "object", "properties": { "filename": { "type": "string", "maxLength": 255 }, "notes": { "type": "string", "maxLength": 500 } }, "additionalProperties": false } } } },
       "PlacementResponse": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["response"], "properties": { "response": { "type": "string", "enum": ["accept", "decline"] }, "campus": { "type": "string", "maxLength": 160 } }, "additionalProperties": false } } } },
-      "CommunicationIssue": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["audience"], "properties": { "audience": { "type": "string", "enum": ["Shortlisted applicants", "Declined applicants", "Withdrawn applicants"] }, "template": { "type": "string", "maxLength": 160 } }, "additionalProperties": false } } } }
+      "CommunicationIssue": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["audience"], "properties": { "audience": { "type": "string", "enum": ["Shortlisted applicants", "Declined applicants", "Withdrawn applicants"] }, "template": { "type": "string", "maxLength": 160 } }, "additionalProperties": false } } } },
+      "ApplicantChatMessage": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["message"], "properties": { "message": { "type": "string", "minLength": 1, "maxLength": 1000 } }, "additionalProperties": false } } } }
     },
     "schemas": {
       "DemoLogin": { "type": "object", "required": ["role"], "properties": { "role": { "type": "string", "enum": ["learner", "staff", "employer", "admin"] } }, "additionalProperties": false },
       "MinimalContact": { "type": "object", "required": ["name", "email", "telephone"], "properties": { "name": { "type": "string", "maxLength": 160 }, "email": { "type": "string", "format": "email", "maxLength": 255 }, "telephone": { "type": "string", "maxLength": 40 } }, "additionalProperties": false },
       "ApplicationDraft": { "type": "object", "description": "Pathway-specific draft. The server preserves original reported values and creates the immutable submission snapshot at submit time.", "properties": { "pathway": { "type": "string", "enum": ["Senior Certificate / Standard 10", "NSC / Grade 12", "NC(V) Level 4"] }, "pathwayValues": { "type": "object", "additionalProperties": true }, "profile": { "type": "object", "additionalProperties": true }, "documents": { "type": "array", "items": { "type": "object" } } }, "additionalProperties": true },
+      "ApplicantChatMessage": { "type": "object", "required": ["id", "message", "direction", "status", "sentAt"], "properties": { "id": { "type": "string" }, "applicationRef": { "type": ["string", "null"] }, "message": { "type": "string" }, "direction": { "type": "string", "enum": ["inbound", "outbound"] }, "status": { "type": "string" }, "sentAt": { "type": "string", "format": "date-time" } } },
       "ErrorResponse": { "type": "object", "required": ["error"], "properties": { "error": { "type": "object", "required": ["code", "message", "requestId"], "properties": { "code": { "type": "string" }, "message": { "type": "string" }, "requestId": { "type": "string", "format": "uuid" } } } } }
     }
   }

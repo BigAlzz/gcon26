@@ -86,6 +86,8 @@ export const getApiSession = () => apiRequest('/v1/auth/session');
 export const getApiApplication = () => apiRequest('/v1/applications/me');
 export const getIntakeConfig = () => apiRequest('/v1/intake/current');
 export const getApiNotifications = () => apiRequest('/v1/notifications');
+export const getApiApplicantChat = () => apiRequest('/v1/applicant/chat');
+export const sendApiApplicantChat = (message) => apiRequest('/v1/applicant/chat', { method: 'POST', body: JSON.stringify({ message }) });
 export const recordApiNonQualifier = (contact) => apiRequest('/v1/applications/non-qualifier', { method: 'POST', body: JSON.stringify(contact) });
 export const saveApiDraft = (application) => apiRequest('/v1/applications/me', { method: 'PATCH', body: JSON.stringify(application) });
 export const submitApiApplication = (application) => apiRequest('/v1/applications/submit', { method: 'POST', headers: { 'x-idempotency-key': `submit-${Date.now()}` }, body: JSON.stringify(application) });

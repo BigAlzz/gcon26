@@ -97,6 +97,7 @@ export function createInitialStore() {
     documents: seedApplications.flatMap((application) => (application.documents || []).map((document) => ({ ...document, ref: application.ref, ownerUserId: application.ownerUserId, organisationId: application.organisationId, objectKey: `applications/${application.ref}/${document.id}` }))),
     communications: [],
     notifications: [],
+    applicantChats: {},
     invitations: [],
     sessions: {},
     authUsers: {},

@@ -48,6 +48,7 @@ export class LocalEncryptedStore {
     if (!this.state.cycle.requirements) { this.state.cycle.requirements = { ...DEFAULT_CYCLE_REQUIREMENTS }; needsSave = true; }
     if (!this.state.cycle.documentTypes) { this.state.cycle.documentTypes = ['Certified copy of ID', 'Statement of results / certificate']; needsSave = true; }
     this.state.notifications ||= [];
+    this.state.applicantChats ||= {};
     this.state.communications ||= [];
     this.state.invitations ||= [];
     this.state.sessions ||= {};
