@@ -104,6 +104,43 @@ async function api(request, url) {
     DEMO_STATE.auditLog.unshift({ id: 'site-demo-audit-bulk-' + Date.now(), time: now, event: 'Applications mass declined', actor: actor.name, actorUserId: actor.userId, organisationId: actor.organisationId, ref: DEMO_STATE.cycle.id, reason: applications.length + ' applications; in-app notifications created', communicationId: communication.id });
     return json({ summary: { requested: applications.length, declined: applications.length, notificationsCreated: applications.length }, communication, state: DEMO_STATE });
   }
+  const placementMatch = url.pathname.match(new RegExp('^/v1/placements/([^/]+)/(prepare|response|termination-letter)$'));
+  if (placementMatch && request.method === 'POST') {
+    const ref = decodeURIComponent(placementMatch[1]);
+    const action = placementMatch[2];
+    const application = DEMO_STATE.applications.find((item) => item.ref === ref);
+    if (!application) return json({ error: 'Application not found' }, 404);
+    const body = await request.json().catch(() => ({}));
+    const now = new Date().toISOString();
+    if (action === 'prepare') {
+      if (!['platform_admin', 'staff_reviewer', 'staff_supervisor'].includes(actor.role)) return json({ error: 'Staff access required' }, 403);
+      if (!['Shortlisted', 'Placement ready', 'Placed'].includes(application.status)) return json({ error: 'Only shortlisted candidates can receive a placement offer' }, 409);
+      const campus = String(body.campus || application.placementCampus || application.preferences?.[0] || 'Ann Latsky Campus').trim();
+      application.placementCampus = campus;
+      application.placementOffer = { status: 'prepared', campus, preparedAt: now, preparedBy: actor.userId };
+      application.status = 'Placement ready';
+      application.releasedToOrganisationIds = [application.organisationId];
+      application.updated = now;
+      DEMO_STATE.auditLog.unshift({ id: 'site-demo-placement-' + Date.now(), time: now, event: 'Placement offer prepared', actor: actor.name, actorUserId: actor.userId, organisationId: actor.organisationId, ref, reason: campus });
+      return json({ application, state: DEMO_STATE });
+    }
+    if (action === 'response') {
+      if (!['employer_member', 'employer_coordinator', 'platform_admin'].includes(actor.role)) return json({ error: 'Employer access required' }, 403);
+      if (application.status !== 'Placement ready') return json({ error: 'Placement offer is not ready for an employer response' }, 409);
+      if (!['accepted', 'declined'].includes(body.response)) return json({ error: 'Placement response must be accepted or declined' }, 400);
+      application.placementResponse = body.response;
+      application.placementCampus = body.campus || application.placementCampus;
+      application.status = body.response === 'accepted' ? 'Placed' : 'Placement ready';
+      application.updated = now;
+      DEMO_STATE.auditLog.unshift({ id: 'site-demo-response-' + Date.now(), time: now, event: 'Employer placement ' + body.response, actor: actor.name, actorUserId: actor.userId, organisationId: actor.organisationId, ref, reason: application.placementCampus });
+      return json({ application, state: DEMO_STATE });
+    }
+    if (!['platform_admin', 'staff_reviewer', 'staff_supervisor'].includes(actor.role)) return json({ error: 'Staff access required' }, 403);
+    if (application.status !== 'Withdrawn') return json({ error: 'Termination letters are only available for withdrawn applications' }, 409);
+    application.terminationLetter = { status: 'recorded', filename: body.filename || 'termination-' + ref + '.pdf', notes: body.notes || '', recordedAt: now, recordedBy: actor.userId };
+    DEMO_STATE.auditLog.unshift({ id: 'site-demo-termination-' + Date.now(), time: now, event: 'Termination letter recorded', actor: actor.name, actorUserId: actor.userId, organisationId: actor.organisationId, ref });
+    return json({ application, state: DEMO_STATE });
+  }
   if (request.method === 'POST' || request.method === 'PATCH') return json({ ok: true });
   return json({ error: 'Not found' }, 404);
 }
