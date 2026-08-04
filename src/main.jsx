@@ -201,7 +201,7 @@ function App() {
       if (mode === 'applicant') setLearnerApplication(remoteApplication?.application || null);
     });
     return () => { active = false; window.removeEventListener('gcon-session-expired', expire); };
-  }, [mode]);
+  }, [mode, session?.token]);
 
   const scopedApplications = useMemo(() => {
     const applications = store.applications || [];
