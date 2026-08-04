@@ -215,9 +215,11 @@ test('termination letters are persisted and auditable for withdrawn applications
 
 test('issued communications create delivery-tracked notifications', () => {
   const store = createInitialStore();
-  const communication = issueCommunication(store, staff, 'Shortlisted applicants', 'Shortlist confirmation');
+  const communication = issueCommunication(store, staff, 'Shortlisted applicants', 'Shortlist confirmation', 'Please review your next-step information in the applicant portal.');
   assert.equal(communication.deliveryStatus, 'sent');
   assert.ok(communication.recipientCount > 0);
+  assert.equal(communication.message, 'Please review your next-step information in the applicant portal.');
   assert.equal(store.notifications.every((item) => item.status === 'sent'), true);
+  assert.equal(store.notifications.every((item) => item.message === communication.message), true);
   assert.equal(visibleState(store, learner).notifications.length, 0);
 });

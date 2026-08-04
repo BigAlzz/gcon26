@@ -341,7 +341,7 @@ async function handle(request, response) {
     if (request.method === 'POST' && url.pathname === '/v1/communications/issue') {
       requireRoles(actor, [ROLES.ADMIN, ROLES.STAFF_REVIEWER, ROLES.STAFF_SUPERVISOR]);
       const body = await readJson(request);
-      const communication = issueCommunication(state, actor, body.audience || 'Shortlisted applicants', body.template);
+      const communication = issueCommunication(state, actor, body.audience || 'Shortlisted applicants', body.template, body.message);
       await store.save();
       sendJson(response, 200, { lettersIssued: true, communication, state: visibleState(state, actor) }, { 'x-request-id': id });
       return;

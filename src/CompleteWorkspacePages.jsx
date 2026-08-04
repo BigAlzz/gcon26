@@ -107,19 +107,53 @@ export function CompleteShortlistPage({ setPage }) {
   return <section className="staff-page"><div className="page-heading"><div><p className="eyebrow">SHORTLIST</p><h1>Shortlisted applicants</h1><p>Invite the next evaluation step without turning the shortlist into a final placement decision.</p></div><span className="review-scope"><span className="secure-dot" /> {shortlisted.length} approved · {invited} invited</span></div><div className="panel shortlist-summary"><div className="shortlist-stat"><span>Ready for psychometric tests</span><strong>{shortlisted.filter((item) => !item.interview).length}</strong><small>Awaiting an invitation</small></div><div className="shortlist-stat"><span>Test invitations issued</span><strong>{invited}</strong><small>Recorded against the candidate</small></div><div className="shortlist-stat"><span>Placement phase</span><strong>{shortlisted.filter((item) => ['Placement ready', 'Placed'].includes(item.status)).length}</strong><small>Separate from eligibility</small></div></div><div className="panel work-panel"><div className="panel-heading"><div><h2>Evaluation actions</h2><p>Open a record only after the staff decision is recorded.</p></div><button className="outline-button" onClick={() => setPage('letters')}>Open communications <span>→</span></button></div><div className="shortlist-rows">{shortlisted.map((application) => <div key={application.ref}><span className="queue-avatar">{application.name.split(' ').map((part) => part[0]).join('')}</span><div><strong>{application.name}</strong><small>{application.ref} · {application.pathway}</small></div><LocalStatus status={application.status} />{application.interview?.status === 'invited' ? <InterviewOutcomeEditor application={application} onSaved={setData} /> : <button className="text-button" onClick={() => invite(application)}>Invite psychometric test <span>→</span></button>}</div>)}{shortlisted.length === 0 && <div className="empty-table">No approved candidates are ready for this stage.</div>}</div></div></section>;
 }
 
+const defaultCommunicationMessages = Object.freeze({
+  'Psychometric test invitation': 'Your psychometric assessment invitation will be available in your applicant communication history.',
+  'Shortlist confirmation': 'Your application has been approved for the next evaluation stage.',
+  'Decline outcome': 'Your application outcome is available. Please review the recorded reason in your applicant portal.',
+  'Termination / withdrawal': 'This letter records the withdrawal or termination decision against the application.',
+});
+
+function defaultCommunicationMessage(template) {
+  return defaultCommunicationMessages[template] || 'An update is available in your applicant communication history.';
+}
+
 export function CompleteLettersPage() {
   const { data, setData } = useWorkspaceData();
   const [audience, setAudience] = useState('Shortlisted applicants');
   const [template, setTemplate] = useState('Psychometric test invitation');
+  const [messageBody, setMessageBody] = useState(() => defaultCommunicationMessage('Psychometric test invitation'));
+  const [mode, setMode] = useState('preview');
   const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
   const deliveries = data.communications || [];
-  const preview = template === 'Decline outcome' ? 'Your application outcome is available. Please review the recorded reason in your applicant portal.' : template === 'Termination / withdrawal' ? 'This letter records the withdrawal or termination decision against the application.' : template === 'Shortlist confirmation' ? 'Your application has been approved for the next evaluation stage.' : 'Your psychometric assessment invitation will be available in your applicant communication history.';
-  async function issue() {
-    const remote = await issueApiLetters(audience, template);
-    if (remote) setData(remote);
-    setMessage(`Letters issued to ${audience.toLowerCase()}.`);
+
+  function changeTemplate(nextTemplate) {
+    setTemplate(nextTemplate);
+    setMessageBody(defaultCommunicationMessage(nextTemplate));
+    setMode('preview');
+    setMessage('');
+    setError('');
   }
-  return <section className="staff-page"><div className="page-heading"><div><p className="eyebrow">LETTERS & COMMS</p><h1>Communication centre</h1><p>Choose a controlled audience and template, preview it, then record the issue action.</p></div><span className="review-scope"><span className="secure-dot" /> Audit-linked communications</span></div><div className="panel letter-composer"><div className="letter-controls"><label className="field"><span>Audience</span><select value={audience} onChange={(event) => setAudience(event.target.value)}><option>Shortlisted applicants</option><option>Declined applicants</option><option>Withdrawn applicants</option></select></label><label className="field"><span>Letter template</span><select value={template} onChange={(event) => setTemplate(event.target.value)}><option>Psychometric test invitation</option><option>Shortlist confirmation</option><option>Decline outcome</option><option>Termination / withdrawal</option></select></label><label className="field"><span>Annual cycle</span><select defaultValue="GCON 2027"><option>GCON 2027</option></select></label></div><div className="letter-preview"><div className="letter-mark"><img src="/gpg-logo.png" alt="" /><strong>GCON 2027</strong></div><p>Dear applicant,</p><p>{preview}</p><div className="letter-sign">Admissions coordinator<br /><strong>Gauteng College of Nursing</strong></div></div><div className="letter-actions"><span>{message || (data.lettersIssued ? 'A communication batch has been issued and recorded.' : 'Preview before issuing. The recipient list is controlled by status.')}</span><button className="primary-button" onClick={issue}>Issue letters <span>→</span></button></div>{deliveries.length > 0 && <div className="communication-deliveries"><div><strong>Recent delivery batches</strong><span>{deliveries.length} recorded</span></div>{deliveries.slice(0, 3).map((delivery) => <div className="communication-delivery" key={delivery.id}><span>{delivery.template}</span><small>{delivery.audience} · {delivery.recipientCount} recipients</small><b>{delivery.deliveryStatus}</b></div>)}</div>}</div></section>;
+
+  async function issue() {
+    const trimmedMessage = messageBody.trim();
+    if (!trimmedMessage) {
+      setMode('edit');
+      setError('Enter a message before issuing this communication.');
+      return;
+    }
+    const remote = await issueApiLetters(audience, template, trimmedMessage);
+    if (remote) {
+      setData(remote);
+      setError('');
+      setMessage(`Letters issued to ${audience.toLowerCase()}.`);
+    } else {
+      setMessage('');
+      setError('The communication could not be issued. No recipients were changed.');
+    }
+  }
+  return <section className="staff-page"><div className="page-heading"><div><p className="eyebrow">LETTERS & COMMS</p><h1>Communication centre</h1><p>Choose a controlled audience and template, edit the message, preview it, then record the issue action.</p></div><span className="review-scope"><span className="secure-dot" /> Audit-linked communications</span></div><div className="panel letter-composer"><div className="letter-controls"><label className="field"><span>Audience</span><select value={audience} onChange={(event) => { setAudience(event.target.value); setMessage(''); setError(''); }}><option>Shortlisted applicants</option><option>Declined applicants</option><option>Withdrawn applicants</option></select></label><label className="field"><span>Letter template</span><select value={template} onChange={(event) => changeTemplate(event.target.value)}><option>Psychometric test invitation</option><option>Shortlist confirmation</option><option>Decline outcome</option><option>Termination / withdrawal</option></select></label><label className="field"><span>Annual cycle</span><select defaultValue="GCON 2027"><option>GCON 2027</option></select></label></div><div className="letter-mode-toggle" aria-label="Message view controls"><strong>Message</strong><div className="letter-mode-actions"><button type="button" className={`quiet-button ${mode === 'preview' ? 'selected' : ''}`} aria-pressed={mode === 'preview'} onClick={() => { setMode('preview'); setError(''); }}>Preview message</button><button type="button" className={`quiet-button ${mode === 'edit' ? 'selected' : ''}`} aria-pressed={mode === 'edit'} onClick={() => { setMode('edit'); setError(''); }}>Edit message</button></div></div>{mode === 'edit' ? <label className="field letter-editor"><span>Message text</span><textarea aria-label="Message text" value={messageBody} onChange={(event) => { setMessageBody(event.target.value); setMessage(''); setError(''); }} rows={7} maxLength={2000} /><small>{messageBody.length}/2000 characters · Changes are applied only when you issue this communication.</small></label> : <div className="letter-preview"><div className="letter-mark"><img src="/gpg-logo.png" alt="" /><strong>GCON 2027</strong></div><p>Dear applicant,</p><p className="letter-message-body">{messageBody}</p><div className="letter-sign">Admissions coordinator<br /><strong>Gauteng College of Nursing</strong></div></div>}<div className="letter-actions"><span>{message || (data.lettersIssued ? 'A communication batch has been issued and recorded.' : 'Preview before issuing. The recipient list is controlled by status.')}</span><button className="primary-button" onClick={issue}>Issue letters <span>→</span></button></div>{error && <p className="letter-error" role="alert">{error}</p>}{deliveries.length > 0 && <div className="communication-deliveries"><div><strong>Recent delivery batches</strong><span>{deliveries.length} recorded</span></div>{deliveries.slice(0, 3).map((delivery) => <div className="communication-delivery" key={delivery.id}><span>{delivery.template}</span><small>{delivery.audience} · {delivery.recipientCount} recipients</small><b>{delivery.deliveryStatus}</b>{delivery.message && <p className="communication-delivery-message">{delivery.message}</p>}</div>)}</div>}</div></section>;
 }
 
 export function CompleteReportsPage() {

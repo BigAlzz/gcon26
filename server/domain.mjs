@@ -29,6 +29,17 @@ export const DEFAULT_CYCLE_REQUIREMENTS = Object.freeze({
   'NC(V) Level 4': 'Fundamentals at 50%+, with each named vocational subject at 60%+.',
 });
 
+const defaultCommunicationMessages = Object.freeze({
+  'Psychometric test invitation': 'Your psychometric assessment invitation will be available in your applicant communication history.',
+  'Shortlist confirmation': 'Your application has been approved for the next evaluation stage.',
+  'Decline outcome': 'Your application outcome is available. Please review the recorded reason in your applicant portal.',
+  'Termination / withdrawal': 'This letter records the withdrawal or termination decision against the application.',
+});
+
+export function communicationMessageForTemplate(template) {
+  return defaultCommunicationMessages[String(template || '')] || 'An update is available in your applicant communication history.';
+}
+
 const clone = (value) => JSON.parse(JSON.stringify(value));
 
 export function isReviewableApplication(application) {
@@ -284,19 +295,21 @@ export function recordTerminationLetter(store, actor, ref, payload = {}) {
   return application;
 }
 
-export function issueCommunication(store, actor, audience, template = '') {
+export function issueCommunication(store, actor, audience, template = '', message = '') {
   if (!hasRole(actor, ROLES.ADMIN, ROLES.STAFF_REVIEWER, ROLES.STAFF_SUPERVISOR)) throw Object.assign(new Error('Only staff can issue communications'), { status: 403 });
   const allowedAudiences = new Set(['Shortlisted applicants', 'Declined applicants', 'Withdrawn applicants']);
   if (!allowedAudiences.has(audience)) throw Object.assign(new Error('Unsupported communication audience'), { status: 400 });
   const statusByAudience = { 'Shortlisted applicants': [APPLICATION_STATUS.SHORTLISTED], 'Declined applicants': [APPLICATION_STATUS.DECLINED], 'Withdrawn applicants': [APPLICATION_STATUS.WITHDRAWN] };
   const recipients = store.applications.filter((application) => application.organisationId === actor.organisationId && statusByAudience[audience].includes(application.status) && application.ownerUserId);
   const issuedAt = new Date().toISOString();
-  const communication = { id: crypto.randomUUID(), audience, template: String(template || 'controlled-notification'), cycleId: store.cycle.id, issuedAt, issuedBy: actor.userId, deliveryStatus: 'sent', provider: 'local-development-adapter', recipientCount: recipients.length };
+  const templateName = String(template || 'controlled-notification');
+  const messageText = String(message || '').trim() || communicationMessageForTemplate(templateName);
+  const communication = { id: crypto.randomUUID(), audience, template: templateName, message: messageText, cycleId: store.cycle.id, issuedAt, issuedBy: actor.userId, deliveryStatus: 'sent', provider: 'local-development-adapter', recipientCount: recipients.length };
   store.communications ||= [];
   store.notifications ||= [];
   store.communications.unshift(communication);
   for (const application of recipients) {
-    store.notifications.unshift({ id: crypto.randomUUID(), userId: application.ownerUserId, applicationRef: application.ref, communicationId: communication.id, channel: 'email', status: 'sent', queuedAt: issuedAt, sentAt: issuedAt, provider: communication.provider, subject: `${audience} · ${store.cycle.name}` });
+    store.notifications.unshift({ id: crypto.randomUUID(), userId: application.ownerUserId, applicationRef: application.ref, communicationId: communication.id, channel: 'email', status: 'sent', queuedAt: issuedAt, sentAt: issuedAt, provider: communication.provider, subject: `${audience} · ${store.cycle.name}`, message: messageText });
   }
   store.lettersIssued = true;
   addAudit(store, `${audience} communication issued`, actor, { ref: store.cycle.name, reason: `${recipients.length} notifications` });

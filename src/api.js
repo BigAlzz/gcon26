@@ -106,7 +106,7 @@ export const reviewApiDocument = async (documentId, decision, reason = '') => re
 export const updateApiShortlist = async (ref, action = 'add', reason = '') => refreshState(await apiRequest('/v1/shortlists', { method: 'POST', body: JSON.stringify({ ref, action, reason }) }));
 export const inviteApiInterview = async (ref, scheduledAt = null) => refreshState(await apiRequest('/v1/interviews', { method: 'POST', body: JSON.stringify({ ref, scheduledAt }) }));
 export const recordApiInterviewOutcome = async (ref, payload) => refreshState(await apiRequest(`/v1/interviews/${encodeURIComponent(ref)}/outcome`, { method: 'PATCH', body: JSON.stringify(payload) }));
-export const issueApiLetters = async (audience, template) => refreshState(await apiRequest('/v1/communications/issue', { method: 'POST', body: JSON.stringify({ audience, template }) }));
+export const issueApiLetters = async (audience, template, message = '') => refreshState(await apiRequest('/v1/communications/issue', { method: 'POST', body: JSON.stringify({ audience, template, message }) }));
 export const updateApiCycle = async (payload) => refreshState(await apiRequest('/v1/intake/current', { method: 'PATCH', body: JSON.stringify(payload) }));
 export const updateApiAdvert = async (status) => updateApiCycle({ status });
 export const updateApiPlacement = async (ref, campus) => refreshState(await apiRequest(`/v1/placements/${encodeURIComponent(ref)}/prepare`, { method: 'POST', body: JSON.stringify({ campus }) }));
