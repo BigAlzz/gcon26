@@ -119,3 +119,4 @@ table { font-size: 13px; } th { color: #526674; font-size: 11px; } td { color: #
 }
 .nonqualifier-card > .primary-button { grid-column: 1 / -1; justify-self: start; width: fit-content; min-height: 44px; padding: 12px 18px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; }
 @media (max-width: 720px) { .nonqualifier-card > .primary-button { width: 100%; } }
+@media (max-width: 720px) { .form-grid > * { min-width: 0; } }
