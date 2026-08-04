@@ -117,3 +117,5 @@ table { font-size: 13px; } th { color: #526674; font-size: 11px; } td { color: #
 @media (max-width: 720px) {
   .portal-strip { font-size: 11px; }.portal-switcher button { font-size: 11px; }.hero-lede { font-size: 16px; }.info-band p { font-size: 13px; }.field input, .field select, .decline-select select { font-size: 16px; }.staff-welcome > div > p:not(.eyebrow), .page-heading > div > p:not(.eyebrow), .placeholder-page > p:not(.eyebrow) { font-size: 13px; }.metric-top { font-size: 12px; }.metric small { font-size: 11px; }.table-toolbar { gap: 10px; }.search input { font-size: 14px; }.employer-header p:not(.eyebrow) { font-size: 14px; }
 }
+.nonqualifier-card > .primary-button { grid-column: 1 / -1; justify-self: start; width: fit-content; min-height: 44px; padding: 12px 18px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; }
+@media (max-width: 720px) { .nonqualifier-card > .primary-button { width: 100%; } }
