@@ -67,3 +67,53 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 @media (max-width: 720px) { .staff-settings-floating { right: 12px; bottom: 12px; } }
 .mass-action-hint { display: flex; justify-content: space-between; gap: 12px; padding: 10px 21px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: #fbfcfd; color: #71818f; font-size: 10px; }.mass-action-hint small { color: #9aa7b0; }.bulk-select-cell { width: 42px; text-align: center !important; }.bulk-select-cell input { accent-color: var(--blue); width: 15px; height: 15px; }.mass-decline-confirm { display: grid; gap: 16px; max-width: 760px; margin: 0 0 18px; padding: 21px; border: 1px solid #ecd8c4; border-left: 3px solid var(--red); border-radius: 8px; background: #fffaf5; }.mass-decline-confirm h2 { color: var(--navy); font-family: Manrope; font-size: 18px; margin: 0 0 6px; }.mass-decline-confirm p:not(.eyebrow) { color: #7d6b5e; font-size: 10px; line-height: 1.6; margin: 0; }.mass-decline-message { max-width: 940px; margin: 0 0 18px; text-align: left; }.in-app-notifications { max-width: 520px; margin: 18px auto; padding: 16px; border: 1px solid #d7e6ee; border-radius: 8px; background: #f8fbfd; text-align: left; }.in-app-notifications h2 { color: var(--navy); font-family: Manrope; font-size: 14px; margin: 0; }.in-app-notification { display: flex; justify-content: space-between; gap: 14px; padding: 12px 0; border-top: 1px solid var(--line); }.in-app-notification:first-of-type { margin-top: 10px; }.in-app-notification strong { color: var(--navy); font-size: 10px; }.in-app-notification p { color: #71818f; font-size: 10px; line-height: 1.5; margin: 4px 0 0; }.in-app-notification small { color: var(--green); white-space: nowrap; font-size: 9px; }
 @media (max-width: 720px) { .mass-action-hint { align-items: flex-start; flex-direction: column; }.mass-decline-confirm { padding: 16px; }.in-app-notification { flex-direction: column; gap: 5px; }.in-app-notification small { white-space: normal; } }
+
+/* Readability pass: keep the compact visual system while bringing body copy and controls to a comfortable size. */
+:root { --muted: #526674; --line: #c7d4de; --soft: #f0f4f7; }
+body { color: var(--ink); font-size: 16px; }
+.portal-strip { color: #d1dfeb; font-size: 12px; }
+.portal-switcher button { color: #d1dfeb; font-size: 12px; }
+.gpg-brand small, .gpg-brand.compact small { color: #526674; font-size: 12px; }
+.public-header nav button { color: #405563; font-size: 13px; }
+.intake-banner { color: #526674; font-size: 13px; }
+.eyebrow { font-size: 11px; }
+.hero-lede { color: #526674; font-size: 17px; }
+.hero-note { color: #526674; font-size: 12px; }
+.hero-panel > div:nth-child(2) span { color: #c6d7e3; font-size: 13px; }
+.hero-panel-row { color: #c6d7e3; font-size: 12px; }
+.info-band strong { font-size: 15px; }
+.info-band p { color: #526674; font-size: 13px; }
+.primary-button, .approve-button { font-size: 14px; }
+.quiet-button, .text-button { font-size: 13px; }
+.step { color: #526674; font-size: 12px; }
+.card-heading p, .sheet-head p, .candidate-header p { color: #526674; font-size: 13px; }
+.required-note, .saved-label, .verified-chip { font-size: 11px; }
+.pathway-tabs button { color: #526674; font-size: 13px; }
+.field span, .decline-select span { color: #405563; font-size: 12px; }
+.field input, .field select, .decline-select select { font-size: 14px; border-color: #b9cad6; }
+.form-footnote, .section-copy { color: #526674; font-size: 13px; }
+.result-card strong { font-size: 13px; }.result-card p { color: #526674; font-size: 12px; }
+.side-explain h3 { font-size: 16px; }.side-explain > p { color: #526674; font-size: 13px; }
+.criteria-mini strong { font-size: 12px; }.criteria-mini span { color: #526674; font-size: 12px; }
+.form-section h3, .cv-section h3, .cv-block h3, .candidate-section h3 { font-size: 15px; }
+.map-label strong { font-size: 12px; }.map-label span { color: #526674; font-size: 11px; }.map-action { font-size: 11px; }
+.document-row strong { font-size: 13px; }.document-row small { color: #526674; font-size: 12px; }.document-row b { font-size: 11px; }
+.optional-grid strong { font-size: 12px; }.optional-grid span { color: #526674; font-size: 11px; }
+.summary-top strong { font-size: 13px; }.summary-top div span, .summary-score span, .summary-list span { color: #526674; font-size: 11px; }.summary-list strong { font-size: 12px; }.summary-note { color: #526674; font-size: 11px; }
+.draft-tag { font-size: 11px; }.cv-fields span { color: #526674; font-size: 11px; }.cv-fields strong { font-size: 13px; }.preference-row strong { font-size: 13px; }.preference-row small { color: #526674; font-size: 11px; }.cv-profile > span:last-child { color: #526674; font-size: 11px; }.document-status > span:nth-child(2) { color: #526674; font-size: 11px; }.document-status strong { font-size: 11px; }.cv-block > small { color: #526674; font-size: 11px; }
+.confirmation > p:not(.eyebrow) { color: #526674; font-size: 15px; }.reference-card span, .reference-card small { font-size: 12px; }.stage-track strong { font-size: 12px; }.stage-track small { color: #526674; font-size: 11px; }
+.public-footer { color: #526674; font-size: 11px; }
+.rail-label { color: #526674; font-size: 11px; }.nav-item, .learner-link { color: #405563; font-size: 14px; }.privacy-note { color: #526674; font-size: 11px; }.user-mini strong { font-size: 12px; }.user-mini small { color: #526674; font-size: 11px; }
+.crumb { font-size: 13px; }.cycle-label { color: #c6d7e3; font-size: 12px; }.staff-welcome > div > p:not(.eyebrow), .page-heading > div > p:not(.eyebrow), .placeholder-page > p:not(.eyebrow) { color: #526674; font-size: 14px; }.cycle-card span { color: #526674; font-size: 12px; }.cycle-card strong { font-size: 14px; }.cycle-card button { font-size: 12px; }
+.metric-top { color: #526674; font-size: 13px; }.metric small { color: #526674; font-size: 12px; }.panel-heading p { color: #526674; font-size: 12px; }.pipeline-step { color: #526674; font-size: 12px; }.pipeline-step strong { font-size: 13px; }
+table { font-size: 13px; } th { color: #526674; font-size: 11px; } td { color: #526674; } td strong { font-size: 13px; } td small { color: #526674; font-size: 11px; }.status { font-size: 12px; }
+.attention-item strong { font-size: 12px; }.attention-item small { color: #526674; font-size: 11px; }.attention-item b { font-size: 13px; }.queue-button { font-size: 12px; }.review-note p { color: #c6d7e3; font-size: 12px; }
+.outline-button, .filter-button { font-size: 12px; }.search input { font-size: 13px; }.results-count, .review-scope { color: #526674; font-size: 12px; }.queue-list-head { font-size: 13px; }.queue-list-head span { color: #526674; font-size: 11px; }.queue-row strong { font-size: 12px; }.queue-row small { color: #526674; font-size: 11px; }.candidate-header p { font-size: 12px; }.candidate-stats span { color: #526674; font-size: 11px; }.candidate-stats strong { font-size: 13px; }.subject-grid span { color: #526674; font-size: 11px; }.subject-grid strong { font-size: 13px; }.decline-select span { font-size: 12px; }.decision-banner strong { font-size: 13px; }.decision-banner small { color: #526674; font-size: 11px; }
+.minimal-status strong { font-size: 13px; }.minimal-status span { color: #526674; font-size: 12px; }
+.employer-header p:not(.eyebrow) { color: #c6d7e3; font-size: 15px; }.employer-identity strong { font-size: 13px; }.employer-identity small { color: #c6d7e3; font-size: 11px; }.employer-candidate-main strong { font-size: 13px; }.employer-candidate-main small, .employer-candidate-meta span { color: #526674; font-size: 11px; }.employer-candidate-meta strong { font-size: 12px; }.employer-actions select, .employer-actions button { font-size: 12px; }.employer-response, .employer-confirmation { font-size: 12px; }.employer-boundary p { color: #c6d7e3; font-size: 12px; }.boundary-rule strong { font-size: 12px; }.boundary-rule span { color: #c6d7e3; font-size: 11px; }
+.shortlist-stat span { color: #526674; font-size: 12px; }.shortlist-stat small { color: #526674; font-size: 11px; }.shortlist-rows strong { font-size: 12px; }.shortlist-rows small { color: #526674; font-size: 11px; }.letter-preview { font-size: 14px; }.letter-sign, .letter-actions > span { color: #526674; font-size: 11px; }.report-card > span, .report-card > small { color: #526674; font-size: 12px; }.demand-row span, .demand-row strong { font-size: 12px; }.audit-row > span, .audit-row strong, .audit-row small, .audit-row em, .audit-row b { font-size: 11px; }.audit-row small, .audit-row em { color: #526674; }
+.application-status-card strong { font-size: 14px; }.application-status-card span { color: #526674; font-size: 12px; }.login-copy { color: #526674; font-size: 13px; }.login-options strong { font-size: 13px; }.login-options span, .login-tabs button, .login-hint { color: #526674; font-size: 11px; }.help-list strong { font-size: 13px; }.help-list span { color: #526674; font-size: 12px; }
+.mass-action-hint, .mass-decline-confirm p:not(.eyebrow), .in-app-notification p { color: #526674; font-size: 12px; }.in-app-notification strong { font-size: 12px; }.in-app-notification small { font-size: 11px; }
+@media (max-width: 720px) {
+  .portal-strip { font-size: 11px; }.portal-switcher button { font-size: 11px; }.hero-lede { font-size: 16px; }.info-band p { font-size: 13px; }.field input, .field select, .decline-select select { font-size: 16px; }.staff-welcome > div > p:not(.eyebrow), .page-heading > div > p:not(.eyebrow), .placeholder-page > p:not(.eyebrow) { font-size: 13px; }.metric-top { font-size: 12px; }.metric small { font-size: 11px; }.table-toolbar { gap: 10px; }.search input { font-size: 14px; }.employer-header p:not(.eyebrow) { font-size: 14px; }
+}
