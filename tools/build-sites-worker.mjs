@@ -79,10 +79,31 @@ async function api(request, url) {
   if (request.method === 'GET' && url.pathname === '/v1/applications/me') {
     return json({ application: DEMO_STATE.applications.find((item) => item.ownerUserId === actor.userId) || null });
   }
-  if (request.method === 'GET' && url.pathname === '/v1/notifications') return json({ notifications: [] });
+  if (request.method === 'GET' && url.pathname === '/v1/notifications') return json({ notifications: DEMO_STATE.notifications.filter((item) => item.userId === actor.userId) });
   if (request.method === 'GET' && url.pathname === '/v1/communications') return json({ communications: DEMO_STATE.communications });
   if (request.method === 'GET' && url.pathname === '/v1/audit') return json({ entries: DEMO_STATE.auditLog });
   if (request.method === 'GET' && url.pathname === '/v1/storage/status') return json({ provider: 'Sites hosted demo', mode: 'static-demo' });
+  if (request.method === 'POST' && url.pathname === '/v1/reviews/mass-decline') {
+    if (!['platform_admin', 'staff_reviewer', 'staff_supervisor'].includes(actor.role)) return json({ error: 'Staff access required' }, 403);
+    const body = await request.json().catch(() => ({}));
+    const refs = Array.isArray(body.refs) ? [...new Set(body.refs.map((ref) => String(ref || '').trim()).filter(Boolean))] : [];
+    const reason = String(body.reason || '').trim();
+    const applications = refs.map((ref) => DEMO_STATE.applications.find((item) => item.ref === ref));
+    if (!refs.length || !reason || applications.some((item) => !item || !['Under review', 'Correction requested'].includes(item.status))) return json({ error: 'Select eligible applications and provide a reason' }, 409);
+    const now = new Date().toISOString();
+    const communication = { id: 'site-demo-communication-' + Date.now(), audience: 'Declined applicants', template: 'Mass decline outcome', channel: 'in_app', cycleId: DEMO_STATE.cycle.id, issuedAt: now, issuedBy: actor.userId, deliveryStatus: 'sent', provider: 'sites-hosted-demo', recipientCount: applications.length };
+    DEMO_STATE.communications.unshift(communication);
+    for (const application of applications) {
+      application.status = 'Declined';
+      application.updated = now;
+      application.declineReason = reason;
+      application.releasedToOrganisationIds = [];
+      DEMO_STATE.notifications.unshift({ id: 'site-demo-notification-' + application.ref, userId: application.ownerUserId, applicationRef: application.ref, communicationId: communication.id, channel: 'in_app', status: 'sent', queuedAt: now, sentAt: now, provider: communication.provider, subject: 'Application outcome available · ' + DEMO_STATE.cycle.name, message: 'Your application was not approved for the next stage. Reason: ' + reason });
+      DEMO_STATE.auditLog.unshift({ id: 'site-demo-audit-' + application.ref, time: now, event: 'Application declined by mass action', actor: actor.name, actorUserId: actor.userId, organisationId: actor.organisationId, ref: application.ref, reason, communicationId: communication.id });
+    }
+    DEMO_STATE.auditLog.unshift({ id: 'site-demo-audit-bulk-' + Date.now(), time: now, event: 'Applications mass declined', actor: actor.name, actorUserId: actor.userId, organisationId: actor.organisationId, ref: DEMO_STATE.cycle.id, reason: applications.length + ' applications; in-app notifications created', communicationId: communication.id });
+    return json({ summary: { requested: applications.length, declined: applications.length, notificationsCreated: applications.length }, communication, state: DEMO_STATE });
+  }
   if (request.method === 'POST' || request.method === 'PATCH') return json({ ok: true });
   return json({ error: 'Not found' }, 404);
 }

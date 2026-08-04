@@ -95,6 +95,11 @@ export const createApiApplication = async (application) => {
   return result ? { ...result, state: await refreshState(result) } : null;
 };
 export const updateApiDecision = async (ref, decision, reason) => refreshState(await apiRequest(`/v1/reviews/${encodeURIComponent(ref)}/decision`, { method: 'POST', body: JSON.stringify({ decision: decision === 'approved' ? 'approve' : decision === 'declined' ? 'decline' : decision === 'correction' ? 'correction' : 'undo', reason }) }));
+export const massDeclineApi = async (refs, reason) => {
+  const result = await apiRequest('/v1/reviews/mass-decline', { method: 'POST', body: JSON.stringify({ refs, reason }) });
+  if (!result) return null;
+  return { ...result, state: await refreshState(result) };
+};
 export const reviewApiDocument = async (documentId, decision, reason = '') => refreshState(await apiRequest(`/v1/documents/${encodeURIComponent(documentId)}/review`, { method: 'POST', body: JSON.stringify({ decision, reason }) }));
 export const updateApiShortlist = async (ref, action = 'add', reason = '') => refreshState(await apiRequest('/v1/shortlists', { method: 'POST', body: JSON.stringify({ ref, action, reason }) }));
 export const inviteApiInterview = async (ref, scheduledAt = null) => refreshState(await apiRequest('/v1/interviews', { method: 'POST', body: JSON.stringify({ ref, scheduledAt }) }));

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { getApiState, inviteApiInterview, issueApiLetters, recordApiInterviewOutcome, recordApiTerminationLetter, reviewApiDocument, updateApiDecision, updateApiPlacement, updateApiWithdrawal } from './api.js?placement=1';
+import { getApiState, inviteApiInterview, issueApiLetters, massDeclineApi, recordApiInterviewOutcome, recordApiTerminationLetter, reviewApiDocument, updateApiDecision, updateApiPlacement, updateApiWithdrawal } from './api.js?placement=1';
 
 const campuses = ['Ann Latsky Campus', 'Chris Hani Baragwanath Campus', 'SG Lourens Campus', 'Bonalesedi Campus'];
 const reviewStatuses = ['Under review', 'Correction requested'];
@@ -139,6 +139,38 @@ export function CompleteAuditPage() {
   const [kind, setKind] = useState('All events');
   const entries = (data.auditLog || []).filter((entry) => `${entry.event} ${entry.ref} ${entry.actor}`.toLowerCase().includes(query.toLowerCase()) && (kind === 'All events' || (kind === 'Decisions' && /approved|declined|correction|decision/i.test(entry.event)) || (kind === 'Communications' && /letter|communication|invitation/i.test(entry.event)) || (kind === 'Profile changes' && /profile|draft|document/i.test(entry.event))));
   return <section className="staff-page"><div className="page-heading"><div><p className="eyebrow">AUDIT TRAIL</p><h1>Decision history</h1><p>Search the append-only local audit trail by reference, actor, or event type.</p></div><span className="review-scope"><span className="secure-dot" /> Restricted staff access</span></div><div className="panel audit-panel"><div className="audit-toolbar"><div className="search"><span className="icon">⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search reference or staff member" /></div><select value={kind} onChange={(event) => setKind(event.target.value)}><option>All events</option><option>Decisions</option><option>Communications</option><option>Profile changes</option></select></div>{entries.slice(0, 50).map((entry, index) => <div className="audit-row" key={entry.id || `${entry.time}-${entry.event}-${entry.ref}-${index}`}><span>{entry.time}</span><div><strong>{entry.event}</strong><small>{entry.ref}</small></div><em>{entry.actor}</em><b>Recorded</b></div>)}{entries.length === 0 && <div className="empty-table">No audit events match this search.</div>}</div></section>;
+}
+
+export function MassApplicationsPage({ setSelectedRef, setPage }) {
+  const { data, setData } = useWorkspaceData();
+  const [query, setQuery] = useState('');
+  const [pathway, setPathway] = useState('All pathways');
+  const [selectedRefs, setSelectedRefs] = useState([]);
+  const [reason, setReason] = useState('Required subject or score not met');
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+  const applications = (data.applications || []).filter((application) => application.status !== 'Draft');
+  const visible = applications.filter((application) => `${application.ref} ${application.name} ${application.id} ${application.pathway}`.toLowerCase().includes(query.toLowerCase()) && (pathway === 'All pathways' || application.pathway === pathway));
+  const declinable = visible.filter((application) => ['Under review', 'Correction requested'].includes(application.status));
+  const allVisibleSelected = declinable.length > 0 && declinable.every((application) => selectedRefs.includes(application.ref));
+  const exportRows = [['Applicant', 'Reference', 'Pathway', 'Score', 'Status'], ...visible.map((application) => [application.name, application.ref, application.pathway, application.score, application.status])];
+
+  function toggleRef(ref) { setSelectedRefs((current) => current.includes(ref) ? current.filter((item) => item !== ref) : [...current, ref]); }
+  function toggleAll() { setSelectedRefs(allVisibleSelected ? [] : declinable.map((application) => application.ref)); }
+  async function massDecline() {
+    setBusy(true);
+    const result = await massDeclineApi(selectedRefs, reason);
+    if (result?.state) {
+      setData(result.state);
+      setSelectedRefs([]);
+      setConfirming(false);
+      setMessage(`${result.summary?.declined || selectedRefs.length} applications declined. In-app notifications were created for each learner.`);
+    } else setMessage('The mass decline could not be saved. No applications were changed.');
+    setBusy(false);
+  }
+
+  return <section className="staff-page"><div className="page-heading"><div><p className="eyebrow">APPLICATIONS</p><h1>All submitted applications</h1><p>Search, filter, and open a record for human review.</p></div><button className="outline-button" onClick={() => downloadCsv('gcon-2027-applications.csv', exportRows)}>Export report <span>Download</span></button></div>{message && <div className="decision-banner approved mass-decline-message" role="status"><span>OK</span><div><strong>{message}</strong><small>Each outcome is linked to the in-app notification and audit trail.</small></div></div>}{confirming && <div className="mass-decline-confirm" role="alertdialog" aria-labelledby="mass-decline-title"><div><p className="eyebrow">BULK ACTION</p><h2 id="mass-decline-title">Decline {selectedRefs.length} applications?</h2><p>This will set each selected application to Declined and create one in-app outcome notification per learner. The action is audit-linked and cannot be applied to shortlisted or placed records.</p></div><label className="field"><span>Reason recorded for every selected learner</span><select value={reason} onChange={(event) => setReason(event.target.value)}><option>Required subject or score not met</option><option>Incorrect or unreadable document</option><option>Document type not supplied</option><option>Information could not be verified</option></select></label><div className="form-actions compact-actions"><button className="quiet-button" type="button" onClick={() => setConfirming(false)} disabled={busy}>Cancel</button><button className="decline-button" type="button" onClick={massDecline} disabled={busy}>{busy ? 'Declining...' : `Confirm mass decline (${selectedRefs.length})`}</button></div></div>}<div className="panel work-panel full-table"><div className="table-toolbar"><div className="search wide"><span className="icon">Search</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search surname, ID number or reference" /></div><span className="results-count">{visible.length} visible results</span><select className="filter-button" value={pathway} onChange={(event) => setPathway(event.target.value)}><option>All pathways</option><option>NSC / Grade 12</option><option>Senior Certificate</option><option>NC(V) Level 4</option></select><button className="decline-button" type="button" disabled={!selectedRefs.length} onClick={() => setConfirming(true)}>Mass decline{selectedRefs.length ? ` (${selectedRefs.length})` : ''}</button></div><div className="mass-action-hint"><span>{selectedRefs.length ? `${selectedRefs.length} selected for mass decline` : 'Select applications under review to send linked in-app outcomes.'}</span><small>{declinable.length} eligible on this page</small></div><div className="table-wrap"><table><thead><tr><th className="bulk-select-cell"><input type="checkbox" aria-label="Select all applications eligible for mass decline" checked={allVisibleSelected} onChange={toggleAll} /></th><th>Applicant</th><th>Reference</th><th>Pathway</th><th>Score</th><th>Status</th><th>Updated</th><th /></tr></thead><tbody>{visible.map((application) => { const canMassDecline = ['Under review', 'Correction requested'].includes(application.status); return <tr key={application.ref} onClick={() => { setSelectedRef?.(application.ref); setPage('reviewQueue'); }}><td className="bulk-select-cell" onClick={(event) => event.stopPropagation()}><input type="checkbox" aria-label={`Select ${application.name} for mass decline`} checked={selectedRefs.includes(application.ref)} disabled={!canMassDecline} onChange={() => toggleRef(application.ref)} /></td><td><strong>{application.name}</strong><small>{application.id}</small></td><td>{application.ref}</td><td>{application.pathway}</td><td><strong>{application.score}</strong></td><td><LocalStatus status={application.status} /></td><td>{application.updated}</td><td><button className="row-arrow" aria-label={`Open ${application.ref}`}>Open</button></td></tr>; })}{visible.length === 0 && <tr><td colSpan="8" className="empty-table">No matching applications.</td></tr>}</tbody></table></div></div></section>;
 }
 
 export function CompletePlacementsPage() {

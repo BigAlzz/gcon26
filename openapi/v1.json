@@ -161,6 +161,13 @@
         "responses": { "200": { "description": "Recorded workflow decision" }, "400": { "$ref": "#/components/responses/BadRequest" }, "403": { "$ref": "#/components/responses/Forbidden" } }
       }
     },
+    "/v1/reviews/mass-decline": {
+      "post": {
+        "tags": ["Staff review"],
+        "requestBody": { "$ref": "#/components/requestBodies/MassDecline" },
+        "responses": { "200": { "description": "Applications declined with linked in-app notifications and audit events" }, "400": { "$ref": "#/components/responses/BadRequest" }, "403": { "$ref": "#/components/responses/Forbidden" }, "409": { "description": "One or more applications are not eligible for mass decline" } }
+      }
+    },
     "/v1/shortlists": {
       "post": {
         "tags": ["Staff review"],
@@ -262,6 +269,7 @@
       "DocumentComplete": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["checksum"], "properties": { "checksum": { "type": "string", "pattern": "^[a-f0-9]{64}$" } }, "additionalProperties": false } } } },
       "DocumentReview": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["decision"], "properties": { "decision": { "type": "string", "enum": ["verified", "rejected", "correction_required"] }, "reason": { "type": "string", "maxLength": 500 } }, "additionalProperties": false } } } },
       "ReviewDecision": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["decision"], "properties": { "decision": { "type": "string", "enum": ["approve", "decline", "correction", "undo"] }, "reason": { "type": "string", "maxLength": 500 } }, "additionalProperties": false } } } },
+      "MassDecline": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["refs", "reason"], "properties": { "refs": { "type": "array", "minItems": 1, "maxItems": 2000, "uniqueItems": true, "items": { "type": "string", "minLength": 1, "maxLength": 80 } }, "reason": { "type": "string", "minLength": 3, "maxLength": 500 } }, "additionalProperties": false } } } },
       "ShortlistAction": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["ref"], "properties": { "ref": { "type": "string" }, "action": { "type": "string", "enum": ["add", "remove"] }, "reason": { "type": "string" } }, "additionalProperties": false } } } },
       "InterviewInvite": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["ref"], "properties": { "ref": { "type": "string" }, "scheduledAt": { "type": "string", "format": "date-time" } }, "additionalProperties": false } } } },
       "InterviewOutcome": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["outcome"], "properties": { "outcome": { "type": "string", "enum": ["passed", "failed", "no_show", "pending"] }, "score": { "type": "string", "maxLength": 40 }, "notes": { "type": "string", "maxLength": 500 } }, "additionalProperties": false } } } },

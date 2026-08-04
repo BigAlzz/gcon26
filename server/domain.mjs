@@ -360,6 +360,36 @@ export function applyReviewDecision(store, actor, ref, decision, reason = '') {
   return application;
 }
 
+export function massDeclineApplications(store, actor, refs = [], reason = '') {
+  if (!hasRole(actor, ROLES.ADMIN, ROLES.STAFF_REVIEWER, ROLES.STAFF_SUPERVISOR)) throw Object.assign(new Error('Only staff can mass-decline applications'), { status: 403 });
+  if (!Array.isArray(refs) || refs.length < 1 || refs.length > 2000) throw Object.assign(new Error('Select between 1 and 2,000 applications'), { status: 400 });
+  const uniqueRefs = [...new Set(refs.map((ref) => String(ref || '').trim()).filter(Boolean))];
+  if (uniqueRefs.length !== refs.length) throw Object.assign(new Error('Application references must be unique and non-empty'), { status: 400 });
+  const declineReason = String(reason || '').trim();
+  if (declineReason.length < 3 || declineReason.length > 500) throw Object.assign(new Error('A decline reason between 3 and 500 characters is required'), { status: 400 });
+  const applications = uniqueRefs.map((ref) => findApplication(store, ref));
+  if (applications.some((application) => !application || !canReadApplication(actor, application))) throw Object.assign(new Error('One or more applications are not available in your organisation scope'), { status: 404 });
+  const allowedStatuses = new Set([APPLICATION_STATUS.UNDER_REVIEW, APPLICATION_STATUS.CORRECTION_REQUESTED]);
+  if (applications.some((application) => !allowedStatuses.has(application.status))) throw Object.assign(new Error('Mass decline is only available for applications under review or awaiting correction resubmission'), { status: 409 });
+
+  const now = new Date().toISOString();
+  const communication = { id: crypto.randomUUID(), audience: 'Declined applicants', template: 'Mass decline outcome', channel: 'in_app', cycleId: store.cycle.id, issuedAt: now, issuedBy: actor.userId, deliveryStatus: 'sent', provider: 'local-development-adapter', recipientCount: applications.length };
+  store.communications ||= [];
+  store.notifications ||= [];
+  store.communications.unshift(communication);
+  for (const application of applications) {
+    application.status = APPLICATION_STATUS.DECLINED;
+    application.updated = now;
+    application.declineReason = declineReason;
+    application.correctionRequest = undefined;
+    application.releasedToOrganisationIds = [];
+    store.notifications.unshift({ id: crypto.randomUUID(), userId: application.ownerUserId, applicationRef: application.ref, communicationId: communication.id, channel: 'in_app', status: 'sent', queuedAt: now, sentAt: now, provider: communication.provider, subject: `Application outcome available · ${store.cycle.name}`, message: `Your application was not approved for the next stage. Reason: ${declineReason}` });
+    addAudit(store, 'Application declined by mass action', actor, { ref: application.ref, reason: declineReason, communicationId: communication.id });
+  }
+  addAudit(store, 'Applications mass declined', actor, { ref: store.cycle.id, reason: `${applications.length} applications; in-app notifications created`, communicationId: communication.id });
+  return { applications, communication, summary: { requested: uniqueRefs.length, declined: applications.length, notificationsCreated: applications.length } };
+}
+
 export function recordPlacementResponse(store, actor, ref, response, campus = '') {
   const application = findApplication(store, ref);
   if (!application) throw new Error('Application not found');

@@ -44,6 +44,8 @@ The local login dialog supports email/password sessions, invitation acceptance a
 
 Annual intake settings are cycle-scoped. A staff supervisor or administrator can use the floating `Configure intake settings` control in the Admissions dashboard, or `PATCH /v1/intake/current`, to change the season name, opening/closing dates, Published/Paused advert status, approved evidence labels, and pathway requirement wording. These changes are persisted by the local API and recorded in the audit trail; submitted applications keep their immutable snapshots. Production should version and approve each annual cycle configuration so a new season can be opened without overwriting previous submissions.
 
+Mass decline and in-app outcomes are supported in the Admissions Applications workspace. Staff can select multiple applications that are still under review or awaiting correction, choose a controlled decline reason, and confirm one atomic batch action. The API checks staff role, organisation scope, ownership, and workflow state before changing any record. It then records an individual decline audit event for each application, a batch summary audit event, and one linked `in_app` notification for every affected learner through the existing communications and notifications store. Learners see the outcome and notification in their application portal; no email or SMS is required for this low-cost communication path.
+
 ## Production binding checklist
 
 The local server reports its active adapter at `/v1/health` and `/v1/storage/status`. Before production, configure:
@@ -64,7 +66,7 @@ The local document directory is intentionally excluded from the Sites source rep
 - `POST /v1/auth/login`, `POST /v1/auth/logout`, `POST/GET /v1/auth/invitations`, `POST /v1/auth/invitations/accept`
 - `GET/PATCH /v1/applications/me`, `POST /v1/applications/submit`
 - `POST /v1/documents/upload-intent`, `PUT /v1/documents/:id/content`, `POST /v1/documents/:id/complete`, `POST /v1/documents/:id/review`
-- `GET /v1/reviews/queue`, `POST /v1/reviews/:ref/decision`, `POST /v1/shortlists`, `POST /v1/interviews`, `PATCH /v1/interviews/:ref/outcome`
+- `GET /v1/reviews/queue`, `POST /v1/reviews/:ref/decision`, `POST /v1/reviews/mass-decline`, `POST /v1/shortlists`, `POST /v1/interviews`, `PATCH /v1/interviews/:ref/outcome`
 - `GET /v1/employer/dashboard`, `GET /v1/employer/candidates`, `POST /v1/placements/:ref/response`
 - `POST /v1/placements/:ref/prepare`, `PATCH /v1/applications/:ref/withdrawal`, `POST /v1/placements/:ref/termination-letter`
 - `GET /v1/communications`, `GET /v1/notifications`, `GET /v1/audit` and `POST /v1/communications/issue`

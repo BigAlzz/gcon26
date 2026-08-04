@@ -4,7 +4,7 @@ import './styles.css?gcon=2027';
 import { acceptInvitationApi, createApiApplication, demoLoginApi, getApiApplication, getApiState, getIntakeConfig, getStoredSession, issueApiLetters, loginApi, logoutApi, recordApiNonQualifier, respondApiPlacement, saveApiDraft, updateApiAdvert, updateApiCycle, updateApiDecision, updateApiPlacement, updateApiWithdrawal, uploadApiDocument } from './api.js?placement=1';
 import { defaultQualification, evaluateQualification, pathways } from './qualification';
 import { UploadableDocumentRow } from './DocumentUpload.jsx';
-import { CompleteApplicationsPage, CompleteAuditPage, CompleteLettersPage, CompletePlacementsPage, CompleteReportsPage, CompleteReviewQueue, CompleteShortlistPage } from './CompleteWorkspacePages.jsx';
+import { CompleteAuditPage, CompleteLettersPage, CompletePlacementsPage, CompleteReportsPage, CompleteReviewQueue, CompleteShortlistPage, MassApplicationsPage } from './CompleteWorkspacePages.jsx';
 import { CompleteReviewApplicationMinimal } from './CompleteApplicantViews.jsx';
 import { CompleteEmployerWorkspace } from './CompleteEmployerWorkspace.jsx';
 
@@ -597,7 +597,7 @@ DocumentRow = UploadableDocumentRow;
 NonQualifierCard = NonQualifierCardComplete;
 ProfileForm = ProfileFormComplete;
 ReviewApplicationMinimal = CompleteReviewApplicationMinimal;
-ApplicationsPage = CompleteApplicationsPage;
+ApplicationsPage = MassApplicationsPage;
 ReviewQueue = CompleteReviewQueue;
 ShortlistPage = CompleteShortlistPage;
 LettersPage = CompleteLettersPage;

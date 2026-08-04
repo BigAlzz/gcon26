@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getApiApplication } from './api.js?placement=1';
+import { getApiApplication, getApiNotifications } from './api.js?placement=1';
 
 function DocumentState({ label, ready }) {
   return <div className="document-status"><span className={ready ? 'doc-ready' : 'doc-missing'}>{ready ? '✓' : '!'}</span><span>{label}</span><strong>{ready ? 'Ready' : 'Missing'}</strong></div>;
@@ -7,10 +7,14 @@ function DocumentState({ label, ready }) {
 
 export function CompleteReviewApplicationMinimal({ profile = {}, pathway = 'NSC / Grade 12', preferences, documents, references, previousTraining, experience, submitted, submittedReference, submitApplication, setStep }) {
   const [application, setApplication] = useState(null);
+  const [notifications, setNotifications] = useState([]);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    getApiApplication().then((remote) => setApplication(remote?.application || null));
+    Promise.all([getApiApplication(), getApiNotifications()]).then(([remote, notificationResult]) => {
+      setApplication(remote?.application || null);
+      setNotifications(notificationResult?.notifications || []);
+    });
   }, [submitted]);
 
   const correction = application?.status === 'Correction requested';
@@ -37,6 +41,7 @@ export function CompleteReviewApplicationMinimal({ profile = {}, pathway = 'NSC 
       {correction && <div className="correction-request"><strong>Correction requested</strong><span>{application.correctionRequest?.reason || 'Please review the requested correction and resubmit.'}</span><button className="text-button" onClick={() => setStep('profile')}>Return to profile -&gt;</button></div>}
       {application?.status === 'Declined' && <div className="correction-request"><strong>Final outcome</strong><span>{application.declineReason || 'Your application was not approved for the next stage.'}</span></div>}
       {application?.status === 'Placed' && <div className="decision-banner approved"><span>✓</span><div><strong>Placement accepted</strong><small>{application.placementCampus ? `Campus: ${application.placementCampus}` : 'Your placement response has been recorded.'}</small></div></div>}
+      {notifications.length > 0 && <section className="in-app-notifications" aria-label="In-app notifications"><div className="section-line"><h2>Notifications</h2><span className="saved-label">{notifications.length} in app</span></div>{notifications.slice(0, 5).map((notification) => <article className="in-app-notification" key={notification.id}><div><strong>{notification.subject || 'Application update'}</strong><p>{notification.message || 'An update is available in your application portal.'}</p></div><small>{notification.status === 'sent' ? 'Available now' : notification.status}</small></article>)}</section>}
       <div className="minimal-status"><strong>Current status</strong><span>{application?.status || 'Under review'}</span><span>Staff review your original pathway results and uploaded evidence.</span></div>
       <button className="primary-button" onClick={() => setStep('landing')}>Return to home -&gt;</button>
     </div>;

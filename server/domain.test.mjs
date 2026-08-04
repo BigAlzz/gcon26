@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { applyReviewDecision, canReadApplication, createInitialStore, isIntakeOpen, isReviewableApplication, issueCommunication, nextReference, recordInterviewOutcome, recordNonQualifierContact, recordPlacementResponse, recordStaffPlacement, recordTerminationLetter, reviewDocument, ROLES, saveDraft, submitApplication, updateIntakeCycle, visibleState } from './domain.mjs';
+import { applyReviewDecision, canReadApplication, createInitialStore, isIntakeOpen, isReviewableApplication, issueCommunication, massDeclineApplications, nextReference, recordInterviewOutcome, recordNonQualifierContact, recordPlacementResponse, recordStaffPlacement, recordTerminationLetter, reviewDocument, ROLES, saveDraft, submitApplication, updateIntakeCycle, visibleState } from './domain.mjs';
 
 const staff = { userId: 'user-reviewer', role: ROLES.STAFF_REVIEWER, organisationId: 'org-gcon', name: 'Thandi Mokoena' };
 const supervisor = { userId: 'user-reviewer', role: ROLES.STAFF_SUPERVISOR, organisationId: 'org-gcon', name: 'Thandi Mokoena' };
@@ -45,6 +45,30 @@ test('staff decisions record reasons and release approved candidates', () => {
   assert.equal(application.status, 'Shortlisted');
   assert.deepEqual(application.releasedToOrganisationIds, ['org-gcon']);
   assert.match(store.auditLog[0].event, /approved/);
+});
+
+test('mass decline changes eligible applications and creates linked in-app notifications', () => {
+  const store = createInitialStore();
+  const applications = store.applications.filter((item) => item.status === 'Under review').slice(0, 2);
+  const result = massDeclineApplications(store, staff, applications.map((item) => item.ref), 'Required subject or score not met');
+  assert.equal(result.summary.declined, applications.length);
+  assert.equal(result.communication.channel, 'in_app');
+  assert.equal(result.communication.recipientCount, applications.length);
+  assert.equal(store.notifications.length, applications.length);
+  assert.equal(store.notifications.every((item) => item.communicationId === result.communication.id && item.channel === 'in_app'), true);
+  assert.equal(applications.every((item) => item.status === 'Declined' && item.declineReason === 'Required subject or score not met'), true);
+  assert.equal(visibleState(store, { ...learner, userId: applications[0].ownerUserId }).notifications.length, 1);
+  assert.match(store.auditLog[0].event, /Applications mass declined/);
+});
+
+test('mass decline is atomic and rejects out-of-scope or non-reviewable records', () => {
+  const store = createInitialStore();
+  const underReview = store.applications.find((item) => item.status === 'Under review');
+  const shortlisted = store.applications.find((item) => item.status === 'Shortlisted');
+  assert.throws(() => massDeclineApplications(store, employer, [underReview.ref], 'Not authorised'), /Only staff/);
+  assert.throws(() => massDeclineApplications(store, staff, [underReview.ref, shortlisted.ref], 'Not eligible'), /only available/);
+  assert.equal(underReview.status, 'Under review');
+  assert.equal(store.notifications.length, 0);
 });
 
 test('staff correction requests preserve a reason and keep the candidate unreleased', () => {

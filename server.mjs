@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { URL } from 'node:url';
-import { addAudit, applyReviewDecision, canReadApplication, createOrUpdateDraft, dashboardMetrics, findApplication, hasRole, isReviewableApplication, issueCommunication, recordInterviewOutcome, recordNonQualifierContact, recordPlacementResponse, recordStaffPlacement, recordTerminationLetter, reviewDocument, saveDraft, submitApplication, updateIntakeCycle, visibleState, ROLES, APPLICATION_STATUS } from './server/domain.mjs';
+import { addAudit, applyReviewDecision, canReadApplication, createOrUpdateDraft, dashboardMetrics, findApplication, hasRole, isReviewableApplication, issueCommunication, massDeclineApplications, recordInterviewOutcome, recordNonQualifierContact, recordPlacementResponse, recordStaffPlacement, recordTerminationLetter, reviewDocument, saveDraft, submitApplication, updateIntakeCycle, visibleState, ROLES, APPLICATION_STATUS } from './server/domain.mjs';
 import { acceptInvitation, authenticateLocal, createInvitation, endSession, ensureAuthState, requireActor, requireRoles, resolveActor } from './server/auth.mjs';
 import { LocalEncryptedStore, providerStatus, publicStoragePath } from './server/storage.mjs';
 import { validateChecksum, validateDocumentMetadata, validateUploadedContent } from './server/upload-policy.mjs';
@@ -280,6 +280,14 @@ async function handle(request, response) {
       const application = applyReviewDecision(state, actor, ref, body.decision, body.reason);
       await store.save();
       sendJson(response, 200, { application: applicationResponse(application) }, { 'x-request-id': id });
+      return;
+    }
+    if (request.method === 'POST' && url.pathname === '/v1/reviews/mass-decline') {
+      requireRoles(actor, [ROLES.ADMIN, ROLES.STAFF_REVIEWER, ROLES.STAFF_SUPERVISOR]);
+      const body = await readJson(request);
+      const result = massDeclineApplications(state, actor, body.refs, body.reason);
+      await store.save();
+      sendJson(response, 200, { summary: result.summary, communication: result.communication, state: visibleState(state, actor) }, { 'x-request-id': id });
       return;
     }
     if (request.method === 'POST' && url.pathname === '/v1/shortlists') {
