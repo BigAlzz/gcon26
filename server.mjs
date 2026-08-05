@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { URL } from 'node:url';
-import { addAudit, applyReviewDecision, canReadApplication, createOrUpdateDraft, dashboardMetrics, findApplication, hasRole, isReviewableApplication, issueCommunication, massDeclineApplications, recordInterviewOutcome, recordNonQualifierContact, recordPlacementResponse, recordStaffPlacement, recordTerminationLetter, reviewDocument, saveDraft, submitApplication, updateIntakeCycle, visibleState, ROLES, APPLICATION_STATUS } from './server/domain.mjs';
+import { addAudit, applyReviewDecision, canReadApplication, createOrUpdateDraft, dashboardMetrics, findApplication, hasRole, isReviewableApplication, issueCommunication, massDeclineApplications, recordInterviewOutcome, recordNonQualifierContact, recordPlacementResponse, recordStaffPlacement, recordTerminationLetter, reviewDocument, saveDraft, submitApplication, updateIntakeCycle, visibleState, CAMPUS_DIRECTORY, ROLES, APPLICATION_STATUS } from './server/domain.mjs';
 import { acceptInvitation, authenticateLocal, createInvitation, endSession, ensureAuthState, requireActor, requireRoles, resolveActor } from './server/auth.mjs';
 import { LocalEncryptedStore, providerStatus, publicStoragePath } from './server/storage.mjs';
 import { validateChecksum, validateDocumentMetadata, validateUploadedContent } from './server/upload-policy.mjs';
@@ -382,7 +382,7 @@ async function handle(request, response) {
     if (request.method === 'GET' && url.pathname === '/v1/employer/dashboard') {
       requireRoles(actor, [ROLES.EMPLOYER_MEMBER, ROLES.EMPLOYER_COORDINATOR]);
       const candidates = state.applications.filter((application) => canReadApplication(actor, application));
-      sendJson(response, 200, { metrics: dashboardMetrics(candidates, actor.organisationId), candidates: candidates.map(applicationResponse) }, { 'x-request-id': id });
+      sendJson(response, 200, { metrics: dashboardMetrics(candidates, actor.organisationId, state.cycle), campuses: CAMPUS_DIRECTORY, candidates: candidates.map(applicationResponse) }, { 'x-request-id': id });
       return;
     }
     if (request.method === 'GET' && url.pathname === '/v1/employer/candidates') {

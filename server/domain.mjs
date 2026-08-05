@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { DEFAULT_CAMPUS_CAPACITIES, PLACEMENT_CAPACITY_STATUSES, capacityFor, summarizeCampusCapacities } from '../shared/campusCapacity.mjs';
 
 export const ROLES = Object.freeze({
   LEARNER: 'learner',
@@ -22,6 +23,22 @@ export const APPLICATION_STATUS = Object.freeze({
 
 export const ORG_GCON = 'org-gcon';
 export const CYCLE_GCON_2027 = 'cycle-gcon-2027';
+
+export const CAMPUS_DIRECTORY = Object.freeze([
+  { name: 'Ann Latsky Campus', address: 'Ann Latsky Campus, Gauteng', contactName: 'Ann Latsky placement desk', phone: '+27 10 000 2027', email: 'annlatsky.placements@gcon.example' },
+  { name: 'Chris Hani Baragwanath Campus', address: 'Chris Hani Baragwanath Campus, Gauteng', contactName: 'Chris Hani placement desk', phone: '+27 10 000 2028', email: 'chb.placements@gcon.example' },
+  { name: 'SG Lourens Campus', address: 'SG Lourens Campus, Gauteng', contactName: 'SG Lourens placement desk', phone: '+27 10 000 2029', email: 'sglourens.placements@gcon.example' },
+  { name: 'Bonalesedi Campus', address: 'Bonalesedi Campus, Gauteng', contactName: 'Bonalesedi placement desk', phone: '+27 10 000 2030', email: 'bonalesedi.placements@gcon.example' },
+]);
+
+export { DEFAULT_CAMPUS_CAPACITIES, summarizeCampusCapacities };
+
+export const DEMO_CANDIDATE_CONTACTS = Object.freeze({
+  'GCON20270731-01': { contactMobile: '082 555 0194', contactEmail: 'lerato.mokoena@email.com' },
+  'GCON20270731-02': { contactMobile: '082 555 0202', contactEmail: 'mpho.dlamini@email.com' },
+  'GCON20270730-14': { contactMobile: '082 555 0214', contactEmail: 'thato.ndlovu@email.com' },
+  'GCON20270731-03': { contactMobile: '082 555 0193', contactEmail: 'lerato.mokoena+03@email.com' },
+});
 
 export const DEFAULT_CYCLE_REQUIREMENTS = Object.freeze({
   'NSC / Grade 12': 'English Level 4+, Life Sciences Level 4+, Mathematics Level 4 or Maths Literacy Level 5+, reported APS 27+.',
@@ -65,11 +82,89 @@ function applyApplicationPayload(application, payload = {}) {
   return application;
 }
 
+const demoApplicantNames = [
+  'Amina Dlamini', 'Bongani Maseko', 'Caroline Mokoena', 'Dineo Mahlangu', 'Elias Mthembu', 'Faith Ncube',
+  'Gugu Ndlovu', 'Hope Maseko', 'Irene Moagi', 'Jabulani Khumalo', 'Kagiso Molefe', 'Lerato Sibeko',
+  'Mandla Mokoena', 'Nandi Mthembu', 'Onica Radebe', 'Phumla Ndlovu', 'Refilwe Mokoena', 'Sello Dube',
+  'Thandiwe Molefe', 'Unathi Maseko', 'Vusi Mokoena', 'Wendy Ndlovu', 'Xolani Mthembu', 'Yolanda Dlamini',
+  'Zanele Khumalo', 'Andile Moagi', 'Boitumelo Radebe', 'Clive Ndlovu', 'Dumisani Mokoena', 'Elsa Dube',
+];
+
+const demoPreferences = ['Ann Latsky Campus', 'Chris Hani Baragwanath Campus', 'SG Lourens Campus', 'Bonalesedi Campus'];
+const demoNscScores = [39.5, 38, 37.5, 36, 35.5, 34, 33.5, 32, 31.5, 30, 28.5, 27];
+const demoSeniorScores = [24, 23, 22, 21, 20, 19, 18, 17];
+const demoNcvScores = [88, 84, 81, 78, 75, 72, 68, 64, 60, 58];
+
+function demoApplication(ref, index, name, pathway, score, pathwayValues) {
+  const status = index % 5 === 0 ? APPLICATION_STATUS.SHORTLISTED : APPLICATION_STATUS.UNDER_REVIEW;
+  return {
+    ref,
+    name,
+    contactMobile: `082 555 ${String(3000 + index).slice(-4)}`,
+    contactEmail: `${name.toLowerCase().replaceAll(' ', '.')}@demo.gcon.example`,
+    id: `900${String(index + 1).padStart(3, '0')}•••••${String(100 + index).slice(-3)}`,
+    ownerUserId: `user-demo-pool-${index + 1}`,
+    pathway,
+    score: pathway === 'NC(V) Level 4' ? `${score}%` : String(score),
+    status,
+    updated: 'Demo pool',
+    preferences: [demoPreferences[index % demoPreferences.length]],
+    addressVerified: true,
+    organisationId: ORG_GCON,
+    releasedToOrganisationIds: [],
+    pathwayValues,
+    documents: [{ id: `demo-pool-${index + 1}-id`, type: 'identity', label: 'Certified copy of ID', state: 'verified' }, { id: `demo-pool-${index + 1}-results`, type: 'results', label: 'Statement of results / certificate', state: 'verified' }],
+  };
+}
+
+export function createDemoApplicantPool() {
+  const applicants = [];
+  let index = 0;
+  demoNscScores.forEach((score) => {
+    const name = demoApplicantNames[index];
+    applicants.push(demoApplication(`GCON20260801-${String(index + 1).padStart(2, '0')}`, index, name, 'NSC / Grade 12', score, { english: '6', lifeSciences: '6', mathematics: '6', mathsLiteracy: '5', aps: String(score) }));
+    index += 1;
+  });
+  demoSeniorScores.forEach((score) => {
+    const name = demoApplicantNames[index];
+    applicants.push(demoApplication(`GCON20260801-${String(index + 1).padStart(2, '0')}`, index, name, 'Senior Certificate', score, { english: 'HG B', biology: 'HG B', mathematics: 'HG B', mScore: String(score) }));
+    index += 1;
+  });
+  demoNcvScores.forEach((score) => {
+    const name = demoApplicantNames[index];
+    applicants.push(demoApplication(`GCON20260801-${String(index + 1).padStart(2, '0')}`, index, name, 'NC(V) Level 4', score, { englishFal: '70', mathematics: '65', lifeOrientation: '60', saHealthCare: String(score), publicHealth: String(score), humanBody: String(score), communityPrimaryCare: String(score) }));
+    index += 1;
+  });
+  return applicants;
+}
+
+export function academicScoreFor(application = {}) {
+  const values = application.pathwayValues || {};
+  if (application.pathway === 'NSC / Grade 12') return { value: Number.parseFloat(values.aps ?? application.score), label: 'APS', display: String(values.aps ?? application.score ?? 'Not reported') };
+  if (application.pathway === 'Senior Certificate') return { value: Number.parseFloat(values.mScore ?? application.score), label: 'M score', display: String(values.mScore ?? application.score ?? 'Not reported') };
+  if (application.pathway === 'NC(V) Level 4') return { value: Number.parseFloat(String(application.score ?? '').replace('%', '')), label: 'Reported percentage', display: String(application.score ?? 'Not reported') };
+  return { value: Number.NaN, label: 'Reported score', display: String(application.score ?? 'Not reported') };
+}
+
+export function rankApplicationsByAcademicScore(applications = []) {
+  const pathwayOrder = ['NSC / Grade 12', 'Senior Certificate', 'NC(V) Level 4'];
+  const groups = new Map();
+  applications.forEach((application) => { if (!groups.has(application.pathway)) groups.set(application.pathway, []); groups.get(application.pathway).push(application); });
+  return [...groups.entries()].sort(([left], [right]) => (pathwayOrder.indexOf(left) === -1 ? 99 : pathwayOrder.indexOf(left)) - (pathwayOrder.indexOf(right) === -1 ? 99 : pathwayOrder.indexOf(right))).flatMap(([, group]) => group.sort((left, right) => {
+    const leftScore = academicScoreFor(left).value;
+    const rightScore = academicScoreFor(right).value;
+    if (Number.isNaN(leftScore) && Number.isNaN(rightScore)) return left.name.localeCompare(right.name);
+    if (Number.isNaN(leftScore)) return 1;
+    if (Number.isNaN(rightScore)) return -1;
+    return rightScore - leftScore || left.name.localeCompare(right.name);
+  }).map((application, rankIndex) => ({ application, academicRank: rankIndex + 1, academic: academicScoreFor(application) })));
+}
+
 const seedApplications = [
   { ref: 'GCON20270731-01', name: 'Lerato Mokoena', id: '900101•••••081', ownerUserId: 'user-learner-demo', pathway: 'NSC / Grade 12', score: '34.5', status: APPLICATION_STATUS.UNDER_REVIEW, updated: 'Today, 09:42', preferences: ['Ann Latsky Campus', 'SG Lourens Campus'], addressVerified: true, organisationId: ORG_GCON, releasedToOrganisationIds: [], pathwayValues: { english: '5', lifeSciences: '5', mathematics: '4', mathsLiteracy: '4', aps: '34.5' }, documents: [{ id: 'doc-demo-id', type: 'identity', label: 'Certified copy of ID', state: 'verified' }, { id: 'doc-demo-results', type: 'results', label: 'Statement of results / certificate', state: 'verified' }] },
-  { ref: 'GCON20270731-02', name: 'Mpho Dlamini', id: '990418•••••082', ownerUserId: 'user-applicant-2', pathway: 'Senior Certificate', score: '18', status: APPLICATION_STATUS.SHORTLISTED, updated: 'Today, 09:21', preferences: ['Chris Hani Baragwanath Campus'], addressVerified: true, organisationId: ORG_GCON, releasedToOrganisationIds: [ORG_GCON], pathwayValues: { english: 'HG D', biology: 'HG D', mathematics: 'HG D', mScore: '18' }, documents: [{ id: 'doc-2-id', type: 'identity', label: 'Certified copy of ID', state: 'verified' }, { id: 'doc-2-results', type: 'results', label: 'Statement of results / certificate', state: 'verified' }] },
+  { ref: 'GCON20270731-02', name: 'Mpho Dlamini', contactMobile: '082 555 0202', contactEmail: 'mpho.dlamini@email.com', id: '990418•••••082', ownerUserId: 'user-applicant-2', pathway: 'Senior Certificate', score: '18', status: APPLICATION_STATUS.SHORTLISTED, updated: 'Today, 09:21', preferences: ['Chris Hani Baragwanath Campus'], addressVerified: true, organisationId: ORG_GCON, releasedToOrganisationIds: [ORG_GCON], pathwayValues: { english: 'HG D', biology: 'HG D', mathematics: 'HG D', mScore: '18' }, documents: [{ id: 'doc-2-id', type: 'identity', label: 'Certified copy of ID', state: 'verified' }, { id: 'doc-2-results', type: 'results', label: 'Statement of results / certificate', state: 'verified' }] },
   { ref: 'GCON20270730-18', name: 'Karabo Molefe', id: '010622•••••317', ownerUserId: 'user-applicant-3', pathway: 'NSC / Grade 12', score: '29.0', status: APPLICATION_STATUS.CORRECTION_REQUESTED, updated: 'Yesterday, 16:08', preferences: ['Bonalesedi Campus'], addressVerified: true, organisationId: ORG_GCON, releasedToOrganisationIds: [], correctionRequest: { reason: 'Please upload a clearer statement of results.', requestedAt: 'Yesterday, 16:08' }, documents: [{ id: 'doc-3-id', type: 'identity', label: 'Certified copy of ID', state: 'verified' }, { id: 'doc-3-results', type: 'results', label: 'Statement of results / certificate', state: 'correction_required' }] },
-  { ref: 'GCON20270730-14', name: 'Thato Ndlovu', id: '000914•••••520', ownerUserId: 'user-applicant-4', pathway: 'NC(V) Level 4', score: '72%', status: APPLICATION_STATUS.SHORTLISTED, updated: 'Yesterday, 14:26', preferences: ['SG Lourens Campus'], addressVerified: true, organisationId: ORG_GCON, releasedToOrganisationIds: [ORG_GCON], pathwayValues: { englishFal: '60', mathematics: '55', lifeOrientation: '50', saHealthCare: '60', publicHealth: '60', humanBody: '60', communityPrimaryCare: '60' }, documents: [{ id: 'doc-4-id', type: 'identity', label: 'Certified copy of ID', state: 'verified' }, { id: 'doc-4-results', type: 'results', label: 'Statement of results / certificate', state: 'verified' }] },
+  { ref: 'GCON20270730-14', name: 'Thato Ndlovu', contactMobile: '082 555 0214', contactEmail: 'thato.ndlovu@email.com', id: '000914•••••520', ownerUserId: 'user-applicant-4', pathway: 'NC(V) Level 4', score: '72%', status: APPLICATION_STATUS.SHORTLISTED, updated: 'Yesterday, 14:26', preferences: ['SG Lourens Campus'], addressVerified: true, organisationId: ORG_GCON, releasedToOrganisationIds: [ORG_GCON], pathwayValues: { englishFal: '60', mathematics: '55', lifeOrientation: '50', saHealthCare: '60', publicHealth: '60', humanBody: '60', communityPrimaryCare: '60' }, documents: [{ id: 'doc-4-id', type: 'identity', label: 'Certified copy of ID', state: 'verified' }, { id: 'doc-4-results', type: 'results', label: 'Statement of results / certificate', state: 'verified' }] },
   { ref: 'GCON20270729-09', name: 'Naledi Seema', id: '990212•••••114', ownerUserId: 'user-applicant-5', pathway: 'NSC / Grade 12', score: '31.5', status: APPLICATION_STATUS.UNDER_REVIEW, updated: '29 Jul, 11:12', preferences: ['Ann Latsky Campus'], addressVerified: true, organisationId: ORG_GCON, releasedToOrganisationIds: [], pathwayValues: { english: '5', lifeSciences: '5', mathematics: '4', mathsLiteracy: '4', aps: '31.5' }, documents: [{ id: 'doc-5-id', type: 'identity', label: 'Certified copy of ID', state: 'pending' }, { id: 'doc-5-results', type: 'results', label: 'Statement of results / certificate', state: 'pending' }] },
 ];
 
@@ -81,6 +176,7 @@ const seedAuditLog = [
 ];
 
 export function createInitialStore() {
+  const initialApplications = [...seedApplications, ...createDemoApplicantPool()];
   return {
     schemaVersion: 2,
     cycle: {
@@ -93,6 +189,7 @@ export function createInitialStore() {
       policyStatus: 'pending-approval',
       documentTypes: ['Certified copy of ID', 'Statement of results / certificate'],
       requirements: clone(DEFAULT_CYCLE_REQUIREMENTS),
+      campusCapacities: { ...DEFAULT_CAMPUS_CAPACITIES },
     },
     organisations: [{ id: ORG_GCON, name: 'Gauteng College of Nursing', code: 'GCON', active: true }],
     users: [
@@ -102,10 +199,10 @@ export function createInitialStore() {
       { id: 'user-admin', name: 'Platform Administrator', email: 'admin@gcon.example', roles: [ROLES.ADMIN], organisationIds: [ORG_GCON] },
     ],
     memberships: [{ userId: 'user-reviewer', organisationId: ORG_GCON, role: ROLES.STAFF_REVIEWER, status: 'active' }, { userId: 'user-employer', organisationId: ORG_GCON, role: ROLES.EMPLOYER_COORDINATOR, status: 'active' }, { userId: 'user-admin', organisationId: ORG_GCON, role: ROLES.ADMIN, status: 'active' }],
-    applications: clone(seedApplications),
+    applications: clone(initialApplications),
     auditLog: clone(seedAuditLog),
-    reviewTasks: seedApplications.filter(isReviewableApplication).map((application, index) => ({ id: `review-${index + 1}`, ref: application.ref, assignedTo: 'user-reviewer', status: 'open' })),
-    documents: seedApplications.flatMap((application) => (application.documents || []).map((document) => ({ ...document, ref: application.ref, ownerUserId: application.ownerUserId, organisationId: application.organisationId, objectKey: `applications/${application.ref}/${document.id}` }))),
+    reviewTasks: initialApplications.filter(isReviewableApplication).map((application, index) => ({ id: `review-${index + 1}`, ref: application.ref, assignedTo: 'user-reviewer', status: 'open' })),
+    documents: initialApplications.flatMap((application) => (application.documents || []).map((document) => ({ ...document, ref: application.ref, ownerUserId: application.ownerUserId, organisationId: application.organisationId, objectKey: `applications/${application.ref}/${document.id}` }))),
     communications: [],
     notifications: [],
     applicantChats: {},
@@ -170,26 +267,28 @@ export function addAudit(store, event, actor, details = {}) {
 
 export function visibleState(store, actor) {
   const readableApplications = store.applications.filter((application) => canReadApplication(actor, application));
-  const applications = readableApplications.map(publicApplication);
+  const rankedApplications = new Map(rankApplicationsByAcademicScore(readableApplications).map((item) => [item.application.ref, item]));
+  const applications = readableApplications.map((application) => publicApplication(application, rankedApplications));
   const staffVisible = hasRole(actor, ROLES.ADMIN, ROLES.STAFF_REVIEWER, ROLES.STAFF_SUPERVISOR);
   const base = { cycle: store.cycle, organisations: store.organisations, applications, auditLog: staffVisible ? store.auditLog : [], notifications: store.notifications.filter((item) => item.userId === actor?.userId), communications: staffVisible ? (store.communications || []) : [], lettersIssued: store.lettersIssued, nonQualifierContacts: staffVisible ? (store.nonQualifierContacts || []) : [] };
   if (hasRole(actor, ROLES.LEARNER)) return base;
   if (hasRole(actor, ROLES.EMPLOYER_MEMBER, ROLES.EMPLOYER_COORDINATOR)) {
-    const visible = readableApplications.filter((application) => application.releasedToOrganisationIds?.includes(actor.organisationId)).map(publicApplication);
-    return { ...base, applications: visible, employer: dashboardMetrics(readableApplications, actor.organisationId) };
+    const visible = readableApplications.filter((application) => application.releasedToOrganisationIds?.includes(actor.organisationId)).map((application) => publicApplication(application, rankedApplications));
+    return { ...base, applications: visible, employer: dashboardMetrics(readableApplications, actor.organisationId, store.cycle) };
   }
-  return { ...base, reviewTasks: store.reviewTasks, employer: dashboardMetrics(applications, actor?.organisationId) };
+  return { ...base, reviewTasks: store.reviewTasks, employer: dashboardMetrics(readableApplications, actor?.organisationId, store.cycle) };
 }
 
-function publicApplication(application) {
+function publicApplication(application, rankedApplications) {
   const { ownerUserId, organisationId, releasedToOrganisationIds, ...safe } = application;
-  return { ...safe, id: maskIdentifier(application.id) };
+  const ranked = rankedApplications?.get(application.ref);
+  return { ...safe, academicScore: ranked?.academic.display || academicScoreFor(application).display, academicScoreLabel: ranked?.academic.label || academicScoreFor(application).label, academicRank: ranked?.academicRank || null, id: maskIdentifier(application.id) };
 }
 
-export function dashboardMetrics(applications, organisationId = ORG_GCON) {
+export function dashboardMetrics(applications, organisationId = ORG_GCON, cycle = {}) {
   const scoped = applications.filter((application) => !organisationId || application.organisationId === organisationId);
   const count = (statuses) => scoped.filter((application) => statuses.includes(application.status)).length;
-  return { organisationId, visibleApplicants: scoped.length, underReview: count([APPLICATION_STATUS.UNDER_REVIEW]), shortlisted: count([APPLICATION_STATUS.SHORTLISTED]), placed: count([APPLICATION_STATUS.PLACED]), needsAction: count([APPLICATION_STATUS.PLACEMENT_READY]), pendingPlacement: count([APPLICATION_STATUS.PLACEMENT_READY]) };
+  return { organisationId, visibleApplicants: scoped.length, underReview: count([APPLICATION_STATUS.UNDER_REVIEW]), shortlisted: count([APPLICATION_STATUS.SHORTLISTED]), placed: count([APPLICATION_STATUS.PLACED]), needsAction: count([APPLICATION_STATUS.PLACEMENT_READY]), pendingPlacement: count([APPLICATION_STATUS.PLACEMENT_READY]), campusDirectory: CAMPUS_DIRECTORY, campusCapacities: summarizeCampusCapacities(scoped, cycle, CAMPUS_DIRECTORY.map((campus) => campus.name)) };
 }
 
 export function updateIntakeCycle(store, actor, payload = {}) {
@@ -228,6 +327,17 @@ export function updateIntakeCycle(store, actor, payload = {}) {
       }
     }
     next.requirements = requirements;
+  }
+  if (payload.campusCapacities !== undefined) {
+    if (!payload.campusCapacities || typeof payload.campusCapacities !== 'object' || Array.isArray(payload.campusCapacities)) throw Object.assign(new Error('Campus capacities must be a campus-to-seat-count object'), { status: 400 });
+    const capacities = { ...DEFAULT_CAMPUS_CAPACITIES, ...(cycle.campusCapacities || {}) };
+    for (const campus of CAMPUS_DIRECTORY.map((item) => item.name)) {
+      if (payload.campusCapacities[campus] === undefined) continue;
+      const value = Number(payload.campusCapacities[campus]);
+      if (!Number.isInteger(value) || value < 0 || value > 100000) throw Object.assign(new Error(`Capacity for ${campus} must be a whole number between 0 and 100000`), { status: 400 });
+      capacities[campus] = value;
+    }
+    next.campusCapacities = capacities;
   }
   Object.assign(cycle, next, { updatedAt: new Date().toISOString(), updatedBy: actor.userId });
   addAudit(store, 'Intake cycle configuration updated', actor, { ref: cycle.id, reason: Object.keys(next).join(', ') || 'no changes' });
@@ -410,11 +520,16 @@ export function recordPlacementResponse(store, actor, ref, response, campus = ''
   if (!canActOnApplication(actor, application, 'placement')) throw new Error('Not authorised for this placement');
   if (application.status !== APPLICATION_STATUS.PLACEMENT_READY) throw Object.assign(new Error('Placement offer is not ready for an employer response'), { status: 409 });
   if (!['accepted', 'declined'].includes(response)) throw new Error('Placement response must be accepted or declined');
+  const campusName = String(campus || application.placementCampus || '').trim();
+  if (!CAMPUS_DIRECTORY.some((item) => item.name === campusName)) throw Object.assign(new Error('Select a valid campus before recording a placement response'), { status: 400 });
+  const assigned = store.applications.filter((item) => item.ref !== ref && PLACEMENT_CAPACITY_STATUSES.includes(item.status) && item.placementCampus === campusName).length;
+  const capacity = capacityFor(store.cycle, campusName);
+  if (response === 'accepted' && assigned >= capacity) throw Object.assign(new Error(`${campusName} has reached its configured capacity of ${capacity}`), { status: 409 });
   application.placementResponse = response;
-  application.placementCampus = campus || application.placementCampus;
+  application.placementCampus = campusName;
   application.status = response === 'accepted' ? APPLICATION_STATUS.PLACED : APPLICATION_STATUS.PLACEMENT_READY;
   application.updated = new Date().toISOString();
-  addAudit(store, `Employer placement ${response}`, actor, { ref, reason: campus });
+  addAudit(store, `Employer placement ${response}`, actor, { ref, reason: campusName, capacity });
   return application;
 }
 
@@ -423,10 +538,15 @@ export function recordStaffPlacement(store, actor, ref, campus) {
   if (!application) throw new Error('Application not found');
   if (!canActOnApplication(actor, application, 'review')) throw new Error('Not authorised for placement');
   if (![APPLICATION_STATUS.SHORTLISTED, APPLICATION_STATUS.PLACEMENT_READY, APPLICATION_STATUS.PLACED].includes(application.status)) throw Object.assign(new Error('Only shortlisted candidates can receive a placement offer'), { status: 409 });
-  application.placementCampus = campus;
+  const campusName = String(campus || '').trim();
+  if (!CAMPUS_DIRECTORY.some((item) => item.name === campusName)) throw Object.assign(new Error('Select a valid campus before preparing a placement offer'), { status: 400 });
+  const assigned = store.applications.filter((item) => item.ref !== ref && PLACEMENT_CAPACITY_STATUSES.includes(item.status) && item.placementCampus === campusName).length;
+  const capacity = capacityFor(store.cycle, campusName);
+  if (assigned >= capacity) throw Object.assign(new Error(`${campusName} has reached its configured capacity of ${capacity}`), { status: 409 });
+  application.placementCampus = campusName;
   application.status = APPLICATION_STATUS.PLACEMENT_READY;
   application.releasedToOrganisationIds = [application.organisationId];
   application.updated = new Date().toISOString();
-  addAudit(store, 'Placement offer prepared', actor, { ref, reason: campus });
+  addAudit(store, 'Placement offer prepared', actor, { ref, reason: campusName, capacity });
   return application;
 }

@@ -1,11 +1,26 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { applyReviewDecision, canReadApplication, createInitialStore, isIntakeOpen, isReviewableApplication, issueCommunication, massDeclineApplications, nextReference, recordInterviewOutcome, recordNonQualifierContact, recordPlacementResponse, recordStaffPlacement, recordTerminationLetter, reviewDocument, ROLES, saveDraft, submitApplication, updateIntakeCycle, visibleState } from './domain.mjs';
+import { applyReviewDecision, canReadApplication, createDemoApplicantPool, createInitialStore, isIntakeOpen, isReviewableApplication, issueCommunication, massDeclineApplications, nextReference, rankApplicationsByAcademicScore, recordInterviewOutcome, recordNonQualifierContact, recordPlacementResponse, recordStaffPlacement, recordTerminationLetter, reviewDocument, ROLES, saveDraft, submitApplication, updateIntakeCycle, visibleState } from './domain.mjs';
 
 const staff = { userId: 'user-reviewer', role: ROLES.STAFF_REVIEWER, organisationId: 'org-gcon', name: 'Thandi Mokoena' };
 const supervisor = { userId: 'user-reviewer', role: ROLES.STAFF_SUPERVISOR, organisationId: 'org-gcon', name: 'Thandi Mokoena' };
 const employer = { userId: 'user-employer', role: ROLES.EMPLOYER_COORDINATOR, organisationId: 'org-gcon', name: 'GCON Placement Team' };
 const learner = { userId: 'user-learner-demo', role: ROLES.LEARNER, organisationId: null, name: 'Lerato Mokoena' };
+
+test('demo applicant pool covers every pathway and is ranked by the reported academic value', () => {
+  const pool = createDemoApplicantPool();
+  assert.equal(pool.length, 30);
+  assert.deepEqual(new Set(pool.map((application) => application.pathway)), new Set(['NSC / Grade 12', 'Senior Certificate', 'NC(V) Level 4']));
+  const ranked = rankApplicationsByAcademicScore(pool);
+  for (const pathway of new Set(pool.map((application) => application.pathway))) {
+    const values = ranked.filter((item) => item.application.pathway === pathway);
+    assert.equal(values[0].academicRank, 1);
+    assert.ok(Number(values[0].academic.value) >= Number(values.at(-1).academic.value));
+  }
+  assert.equal(ranked.find((item) => item.application.pathway === 'NSC / Grade 12').academic.label, 'APS');
+  assert.equal(ranked.find((item) => item.application.pathway === 'Senior Certificate').academic.label, 'M score');
+  assert.equal(ranked.find((item) => item.application.pathway === 'NC(V) Level 4').academic.label, 'Reported percentage');
+});
 
 test('daily references are sequential and reset by date', () => {
   const store = createInitialStore();
@@ -90,6 +105,16 @@ test('employer can respond only to a released placement', () => {
   assert.equal(application.placementCampus, 'Ann Latsky Campus');
 });
 
+test('placement offers cannot exceed the configured campus capacity', () => {
+  const store = createInitialStore();
+  store.cycle.campusCapacities['Ann Latsky Campus'] = 1;
+  const shortlisted = store.applications.filter((application) => application.status === 'Shortlisted').slice(0, 2);
+  assert.equal(shortlisted.length, 2);
+  recordStaffPlacement(store, staff, shortlisted[0].ref, 'Ann Latsky Campus');
+  assert.throws(() => recordStaffPlacement(store, staff, shortlisted[1].ref, 'Ann Latsky Campus'), /reached its configured capacity/);
+  assert.equal(shortlisted[1].status, 'Shortlisted');
+});
+
 test('employer cannot respond to a shortlist before staff prepares an offer', () => {
   const store = createInitialStore();
   const application = store.applications.find((item) => item.status === 'Shortlisted');
@@ -121,12 +146,15 @@ test('supervisors can update annual intake settings and the change is audited', 
     status: 'Paused',
     documentTypes: ['Identity document', 'Final results certificate'],
     requirements: { 'NSC / Grade 12': 'Approved NSC wording for this cycle.' },
+    campusCapacities: { 'Ann Latsky Campus': 42, 'Chris Hani Baragwanath Campus': 18 },
   });
   assert.equal(cycle.name, 'GCON 2028 Winter Intake');
   assert.equal(cycle.openDate, '2027-05-01');
   assert.equal(cycle.advertStatus, 'Paused');
   assert.deepEqual(cycle.documentTypes, ['Identity document', 'Final results certificate']);
   assert.equal(cycle.requirements['NSC / Grade 12'], 'Approved NSC wording for this cycle.');
+  assert.equal(cycle.campusCapacities['Ann Latsky Campus'], 42);
+  assert.equal(cycle.campusCapacities['Chris Hani Baragwanath Campus'], 18);
   assert.match(store.auditLog[0].event, /Intake cycle configuration updated/);
 });
 

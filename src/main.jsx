@@ -7,6 +7,7 @@ import { UploadableDocumentRow } from './DocumentUpload.jsx';
 import { CompleteAuditPage, CompleteLettersPage, CompletePlacementsPage, CompleteReportsPage, CompleteReviewQueue, CompleteShortlistPage, MassApplicationsPage } from './CompleteWorkspacePages.jsx';
 import { CompleteReviewApplicationMinimal } from './CompleteApplicantViews.jsx';
 import { CompleteEmployerWorkspace } from './CompleteEmployerWorkspace.jsx';
+import { DEFAULT_CAMPUS_CAPACITIES } from '../shared/campusCapacity.mjs';
 
 const applicantSteps = [
   ['landing', 'Welcome'],
@@ -92,6 +93,7 @@ function IntakeCycleEditor({ cycle, onSave }) {
     status: cycle?.advertStatus || 'Published',
     documentTypes: [...(cycle?.documentTypes || ['Certified copy of ID', 'Statement of results / certificate'])],
     requirements: { ...defaultCycleRequirements, ...(cycle?.requirements || {}) },
+    capacities: { ...DEFAULT_CAMPUS_CAPACITIES, ...(cycle?.campusCapacities || {}) },
   }));
 
   function startEditing() {
@@ -102,6 +104,7 @@ function IntakeCycleEditor({ cycle, onSave }) {
       status: cycle?.advertStatus || 'Published',
       documentTypes: [...(cycle?.documentTypes || ['Certified copy of ID', 'Statement of results / certificate'])],
       requirements: { ...defaultCycleRequirements, ...(cycle?.requirements || {}) },
+      capacities: { ...DEFAULT_CAMPUS_CAPACITIES, ...(cycle?.campusCapacities || {}) },
     });
     setMessage('');
     setError('');
@@ -120,7 +123,7 @@ function IntakeCycleEditor({ cycle, onSave }) {
     setBusy(true);
     setMessage('');
     setError('');
-    const result = await onSave(draft);
+    const result = await onSave({ ...draft, campusCapacities: draft.capacities });
     if (result?.cycle) {
       setMessage('Annual intake settings saved.');
       setOpen(false);
@@ -130,7 +133,7 @@ function IntakeCycleEditor({ cycle, onSave }) {
     setBusy(false);
   }
 
-  return <div className="cycle-settings"><button className="cycle-settings-toggle" type="button" onClick={open ? () => setOpen(false) : startEditing}>{open ? 'Close intake settings' : 'Configure intake settings'}</button>{message && <span className="cycle-settings-success">{message}</span>}{open && <div className="cycle-settings-panel"><div className="section-line"><strong>Annual intake configuration</strong><span className="saved-label">Supervisor / admin</span></div><label className="field"><span>Season or intake name</span><input value={draft.name} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} /></label><div className="field-grid two"><label className="field"><span>Opening date</span><input type="date" value={draft.openDate} onChange={(event) => setDraft((current) => ({ ...current, openDate: event.target.value }))} /></label><label className="field"><span>Closing date</span><input type="date" value={draft.closeDate} onChange={(event) => setDraft((current) => ({ ...current, closeDate: event.target.value }))} /></label></div><label className="field"><span>Advert status</span><select value={draft.status} onChange={(event) => setDraft((current) => ({ ...current, status: event.target.value }))}><option>Published</option><option>Paused</option></select></label><div className="cycle-settings-subhead">Approved evidence labels</div>{draft.documentTypes.slice(0, 2).map((label, index) => <label className="field" key={`document-label-${index}`}><span>Document {index + 1}</span><input value={label} onChange={(event) => updateDocument(index, event.target.value)} /></label>)}<div className="cycle-settings-subhead">Requirement wording shown to applicants and staff</div>{Object.keys(defaultCycleRequirements).map((pathway) => <label className="field" key={pathway}><span>{pathway}</span><textarea rows="2" value={draft.requirements[pathway] || ''} onChange={(event) => updateRequirement(pathway, event.target.value)} /></label>)}{error && <p className="login-error">{error}</p>}<div className="form-actions compact-actions"><button className="quiet-button" type="button" onClick={() => setOpen(false)}>Cancel</button><button className="primary-button" type="button" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save intake settings'}</button></div></div>}</div>;
+  return <div className="cycle-settings"><button className="cycle-settings-toggle" type="button" onClick={open ? () => setOpen(false) : startEditing}>{open ? 'Close intake settings' : 'Configure intake settings'}</button>{message && <span className="cycle-settings-success">{message}</span>}{open && <div className="cycle-settings-panel"><div className="section-line"><strong>Annual intake configuration</strong><span className="saved-label">Supervisor / admin</span></div><label className="field"><span>Season or intake name</span><input value={draft.name} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} /></label><div className="field-grid two"><label className="field"><span>Opening date</span><input type="date" value={draft.openDate} onChange={(event) => setDraft((current) => ({ ...current, openDate: event.target.value }))} /></label><label className="field"><span>Closing date</span><input type="date" value={draft.closeDate} onChange={(event) => setDraft((current) => ({ ...current, closeDate: event.target.value }))} /></label></div><label className="field"><span>Advert status</span><select value={draft.status} onChange={(event) => setDraft((current) => ({ ...current, status: event.target.value }))}><option>Published</option><option>Paused</option></select></label><div className="cycle-settings-subhead">Approved evidence labels</div>{draft.documentTypes.slice(0, 2).map((label, index) => <label className="field" key={`document-label-${index}`}><span>Document {index + 1}</span><input value={label} onChange={(event) => updateDocument(index, event.target.value)} /></label>)}<div className="cycle-settings-subhead">Campus capacity (available seats)</div><p className="cycle-capacity-note">Set the maximum number of placement offers for each campus in this annual intake. New offers are blocked when a campus is full.</p>{Object.keys(DEFAULT_CAMPUS_CAPACITIES).map((campus) => <label className="field" key={campus}><span>{campus}</span><input type="number" min="0" max="100000" step="1" value={draft.capacities[campus] ?? DEFAULT_CAMPUS_CAPACITIES[campus]} onChange={(event) => setDraft((current) => ({ ...current, capacities: { ...current.capacities, [campus]: event.target.value } }))} /></label>)}<div className="cycle-settings-subhead">Requirement wording shown to applicants and staff</div>{Object.keys(defaultCycleRequirements).map((pathway) => <label className="field" key={pathway}><span>{pathway}</span><textarea rows="2" value={draft.requirements[pathway] || ''} onChange={(event) => updateRequirement(pathway, event.target.value)} /></label>)}{error && <p className="login-error">{error}</p>}<div className="form-actions compact-actions"><button className="quiet-button" type="button" onClick={() => setOpen(false)}>Cancel</button><button className="primary-button" type="button" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save intake settings'}</button></div></div>}</div>;
 }
 
 function App() {
@@ -297,7 +300,7 @@ function App() {
       ) : mode === 'staff' ? (
         <StaffWorkspaceWithPlacements page={staffPage} setPage={setStaffPage} query={query} setQuery={setQuery} applications={filteredApplications} selectedApplication={selectedApplication} selectedRef={selectedRef} setSelectedRef={setSelectedRef} decision={decision} declineReason={declineReason} setDeclineReason={setDeclineReason} submitDecision={submitDecision} auditLog={store.auditLog} lettersIssued={store.lettersIssued} issueLetters={issueLetters} cycle={store.cycle} changeAdvertStatus={changeAdvertStatus} updateCycle={updateCycle} assignPlacement={assignPlacement} withdrawApplication={withdrawApplication} apiConnected={apiConnected} />
       ) : (
-        <CompleteEmployerWorkspace applications={scopedApplications} metrics={store.employer} respondPlacement={respondPlacement} apiConnected={apiConnected} />
+        <CompleteEmployerWorkspace applications={scopedApplications} metrics={store.employer} respondPlacement={respondPlacement} apiConnected={apiConnected} cycle={store.cycle} campusDirectory={store.employer?.campusDirectory} />
       )}
       {loginOpen && <LoginModal targetMode={loginTarget} onLogin={handleLogin} onAcceptInvitation={handleInvitation} onClose={() => setLoginOpen(false)} />}
       {helpOpen && <HelpPanel onClose={() => setHelpOpen(false)} />}

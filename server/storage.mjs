@@ -2,7 +2,8 @@ import crypto from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createInitialStore, DEFAULT_CYCLE_REQUIREMENTS, ORG_GCON, ROLES } from './domain.mjs';
+import { createDemoApplicantPool, createInitialStore, DEFAULT_CYCLE_REQUIREMENTS, DEMO_CANDIDATE_CONTACTS, isReviewableApplication, ORG_GCON, ROLES } from './domain.mjs';
+import { DEFAULT_CAMPUS_CAPACITIES } from '../shared/campusCapacity.mjs';
 
 const rootDir = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const dataDir = path.join(rootDir, 'data');
@@ -42,9 +43,20 @@ export class LocalEncryptedStore {
       await this.save();
     }
     this.state.schemaVersion = Math.max(2, Number(this.state.schemaVersion || 1));
+    for (const application of this.state.applications || []) {
+      const demoContact = DEMO_CANDIDATE_CONTACTS[application.ref];
+      const profile = application.profile || {};
+      const contactMobile = application.contactMobile || application.mobile || profile.mobile || demoContact?.contactMobile;
+      const contactEmail = application.contactEmail || application.email || profile.email || demoContact?.contactEmail;
+      if (contactMobile && application.contactMobile !== contactMobile) { application.contactMobile = contactMobile; needsSave = true; }
+      if (contactEmail && application.contactEmail !== contactEmail) { application.contactEmail = contactEmail; needsSave = true; }
+    }
     this.state.referenceCounters ||= {};
     this.state.documents ||= [];
+    this.state.reviewTasks ||= [];
     this.state.cycle ||= {};
+    this.state.cycle.campusCapacities ||= { ...DEFAULT_CAMPUS_CAPACITIES };
+    for (const [campus, capacity] of Object.entries(DEFAULT_CAMPUS_CAPACITIES)) this.state.cycle.campusCapacities[campus] ??= capacity;
     if (!this.state.cycle.requirements) { this.state.cycle.requirements = { ...DEFAULT_CYCLE_REQUIREMENTS }; needsSave = true; }
     if (!this.state.cycle.documentTypes) { this.state.cycle.documentTypes = ['Certified copy of ID', 'Statement of results / certificate']; needsSave = true; }
     this.state.notifications ||= [];
@@ -53,6 +65,16 @@ export class LocalEncryptedStore {
     this.state.invitations ||= [];
     this.state.sessions ||= {};
     this.state.authUsers ||= {};
+    const existingRefs = new Set((this.state.applications || []).map((application) => application.ref));
+    const missingDemoApplicants = createDemoApplicantPool().filter((application) => !existingRefs.has(application.ref));
+    if (missingDemoApplicants.length) {
+      this.state.applications.push(...missingDemoApplicants);
+      for (const application of missingDemoApplicants) {
+        if (isReviewableApplication(application)) this.state.reviewTasks.push({ id: `review-${application.ref}`, ref: application.ref, assignedTo: 'user-reviewer', status: 'open' });
+        for (const document of application.documents || []) this.state.documents.push({ ...document, ref: application.ref, ownerUserId: application.ownerUserId, organisationId: application.organisationId, objectKey: `applications/${application.ref}/${document.id}` });
+      }
+      needsSave = true;
+    }
     if (needsSave) await this.save();
     return this.state;
   }
@@ -84,6 +106,7 @@ function migrateLegacyState(legacy) {
   const legacyApplications = Array.isArray(legacy.applications) ? legacy.applications : [];
   migrated.applications = legacyApplications.map((application, index) => ({
     ...application,
+    ...(DEMO_CANDIDATE_CONTACTS[application.ref] || {}),
     ownerUserId: application.ownerUserId || (index === 0 ? 'user-learner-demo' : `user-applicant-${index + 1}`),
     organisationId: application.organisationId || ORG_GCON,
     releasedToOrganisationIds: application.releasedToOrganisationIds || (['Shortlisted', 'Placed'].includes(application.status) ? [ORG_GCON] : []),
