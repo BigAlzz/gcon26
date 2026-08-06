@@ -1,6 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { evaluateQualification, mathematicsScore, selectMathematicsResult } from './qualification.js';
+import { defaultQualification, evaluateQualification, mathematicsScore, selectMathematicsResult } from './qualification.js';
+
+test('NSC mathematics alternatives default to zero without a calculated score', () => {
+  const defaults = defaultQualification['NSC / Grade 12'];
+  assert.equal(defaults.mathematics, '0');
+  assert.equal(defaults.mathsLiteracy, '0');
+  assert.deepEqual(selectMathematicsResult(defaults), { subject: null, value: '' });
+  assert.equal(mathematicsScore(defaults), null);
+});
 
 test('NSC accepts the minimum subject levels and APS boundary', () => {
   const result = evaluateQualification('NSC / Grade 12', { english: '4', lifeSciences: '4', mathematics: '4', mathsLiteracy: '4', aps: '27' });

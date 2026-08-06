@@ -6,8 +6,8 @@ export const defaultQualification = {
     resultYear: '2025',
     english: '5',
     lifeSciences: '5',
-    mathematics: '4',
-    mathsLiteracy: '4',
+    mathematics: '0',
+    mathsLiteracy: '0',
     lifeOrientation: '5',
     aps: '34.5',
   },
@@ -38,13 +38,14 @@ const numberAtLeast = (value, minimum) => Number(value) >= minimum;
 export function selectMathematicsResult(values = {}) {
   const mathematics = String(values.mathematics ?? '').trim();
   const mathsLiteracy = String(values.mathsLiteracy ?? '').trim();
-  if (mathematics && !['Not taken', 'Not supplied'].includes(mathematics)) return { subject: 'Mathematics', value: mathematics };
-  if (mathsLiteracy && !['Not taken', 'Not supplied'].includes(mathsLiteracy)) return { subject: 'Maths Literacy', value: mathsLiteracy };
+  if (mathematics && !['0', 'Not taken', 'Not supplied'].includes(mathematics)) return { subject: 'Mathematics', value: mathematics };
+  if (mathsLiteracy && !['0', 'Not taken', 'Not supplied'].includes(mathsLiteracy)) return { subject: 'Maths Literacy', value: mathsLiteracy };
   return { subject: null, value: '' };
 }
 
 export function mathematicsScore(values = {}) {
   const selected = selectMathematicsResult(values);
+  if (!selected.value) return null;
   const score = Number(selected.value);
   return Number.isFinite(score) ? score : null;
 }
