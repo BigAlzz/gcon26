@@ -35,7 +35,22 @@ export const defaultQualification = {
 const seniorPass = (value) => ['HG A', 'HG B', 'HG C', 'HG D', 'SG A', 'SG B', 'SG C'].includes(value);
 const numberAtLeast = (value, minimum) => Number(value) >= minimum;
 
+export function selectMathematicsResult(values = {}) {
+  const mathematics = String(values.mathematics ?? '').trim();
+  const mathsLiteracy = String(values.mathsLiteracy ?? '').trim();
+  if (mathematics && !['Not taken', 'Not supplied'].includes(mathematics)) return { subject: 'Mathematics', value: mathematics };
+  if (mathsLiteracy && !['Not taken', 'Not supplied'].includes(mathsLiteracy)) return { subject: 'Maths Literacy', value: mathsLiteracy };
+  return { subject: null, value: '' };
+}
+
+export function mathematicsScore(values = {}) {
+  const selected = selectMathematicsResult(values);
+  const score = Number(selected.value);
+  return Number.isFinite(score) ? score : null;
+}
+
 export function evaluateQualification(pathway, values) {
+  const mathematics = selectMathematicsResult(values);
   const checks = pathway === 'Senior Certificate'
     ? [
         ['English', seniorPass(values.english)],
@@ -64,6 +79,8 @@ export function evaluateQualification(pathway, values) {
     pathway,
     values,
     score: pathway === 'NSC / Grade 12' ? values.aps : pathway === 'Senior Certificate' ? values.mScore : 'NC(V) rules passed',
+    mathematicsSubject: pathway === 'NSC / Grade 12' ? mathematics.subject : undefined,
+    mathematicsScore: pathway === 'NSC / Grade 12' ? mathematicsScore(values) : undefined,
     checks,
     failed,
   };
