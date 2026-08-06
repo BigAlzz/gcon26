@@ -375,7 +375,7 @@ function MvpApplicantPortal({ step, setStep, pathway, setPathway, result, setRes
   }, [result]);
 
   return <div className="applicant-layout">
-    <header className="public-header"><GpgBrand /><nav><button onClick={() => setStep('landing')}>Home</button><button onClick={() => setStep('checker')}>Qualification checker</button><button onClick={onHelp}>FAQ</button>{session ? <button className="header-login" onClick={onLogout}>Sign out</button> : <button className="header-login" onClick={onLogin}>Login</button>}</nav></header>
+    <header className="public-header"><GpgBrand /><nav><button onClick={() => setStep('landing')}>Home</button><button onClick={() => setStep('checker')}>Qualification checker</button><button onClick={onHelp}>FAQ</button>{session && <button className="header-profile" type="button" onClick={() => setStep('profile')} aria-label="Open my profile">My profile</button>}{session ? <button className="header-login" onClick={onLogout}>Sign out</button> : <button className="header-login" onClick={onLogin}>Login</button>}</nav></header>
     <main className="public-main">
       <div className={`intake-banner ${intakeOpen ? '' : 'paused-banner'}`}><span className="live-dot" /> {intakeOpen ? '2027 intake is open' : '2027 intake is currently paused'} <b>·</b> Applications close {cycle?.closeDate || '26 Sep 2026'}</div>
       {step === 'landing' && <MvpLanding setStep={setStep} cycle={cycle} application={application} />}
