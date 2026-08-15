@@ -349,15 +349,28 @@ export function findApplication(store, ref) {
 }
 
 export function recordNonQualifierContact(store, actor, payload = {}) {
-  if (!hasRole(actor, ROLES.LEARNER)) throw Object.assign(new Error('Only learners can record a contact request'), { status: 403 });
+  const anonymous = !actor?.userId;
+  if (!anonymous && !hasRole(actor, ROLES.LEARNER)) throw Object.assign(new Error('Only learners can record a contact request'), { status: 403 });
   const name = String(payload.name || '').trim();
   const email = String(payload.email || '').trim();
   const telephone = String(payload.telephone || '').trim();
   if (!name || !email || !telephone) throw Object.assign(new Error('Name, email, and telephone are required'), { status: 400 });
   store.nonQualifierContacts ||= [];
-  const existing = store.nonQualifierContacts.find((item) => item.ownerUserId === actor.userId && item.cycleId === store.cycle.id);
-  const contact = existing || { id: `contact-${crypto.randomUUID()}`, cycleId: store.cycle.id, ownerUserId: actor.userId };
-  Object.assign(contact, { name, email, telephone, recordedAt: new Date().toISOString() });
+  const existing = anonymous ? null : store.nonQualifierContacts.find((item) => item.ownerUserId === actor.userId && item.cycleId === store.cycle.id);
+  const contact = existing || { id: `contact-${crypto.randomUUID()}`, cycleId: store.cycle.id, ownerUserId: actor?.userId || null, source: 'qualification-checker' };
+  const qualificationValues = payload.qualificationValues && typeof payload.qualificationValues === 'object' && !Array.isArray(payload.qualificationValues) ? payload.qualificationValues : {};
+  Object.assign(contact, {
+    name,
+    email,
+    telephone,
+    pathway: String(payload.pathway || '').trim(),
+    idNumber: String(payload.idNumber || '').trim(),
+    qualificationValues,
+    qualificationStatus: 'does-not-qualify',
+    failed: Array.isArray(payload.failed) ? payload.failed.map((item) => String(item || '').trim()).filter(Boolean).slice(0, 20) : [],
+    score: payload.score ?? null,
+    recordedAt: new Date().toISOString(),
+  });
   if (!existing) store.nonQualifierContacts.unshift(contact);
   addAudit(store, 'Non-qualifier contact recorded', actor, { ref: 'non-qualifier' });
   return contact;

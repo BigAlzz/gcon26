@@ -128,6 +128,33 @@ async function api(request, url) {
     return json({ cycle: DEMO_STATE.cycle });
   }
   if (request.method === 'POST' && url.pathname === '/v1/auth/logout') return json({ loggedOut: true });
+  if (request.method === 'POST' && url.pathname === '/v1/applications/non-qualifier') {
+    const body = await request.json().catch(() => ({}));
+    const name = String(body.name || '').trim();
+    const email = String(body.email || '').trim();
+    const telephone = String(body.telephone || '').trim();
+    if (!name || !email || !telephone) return json({ error: 'Name, email, and telephone are required' }, 400);
+    DEMO_STATE.nonQualifierContacts ||= [];
+    const record = {
+      id: 'site-demo-non-qualifier-' + crypto.randomUUID(),
+      cycleId: DEMO_STATE.cycle.id,
+      ownerUserId: null,
+      source: 'qualification-checker',
+      name,
+      email,
+      telephone,
+      pathway: String(body.pathway || '').trim(),
+      idNumber: String(body.idNumber || '').trim(),
+      qualificationValues: body.qualificationValues && typeof body.qualificationValues === 'object' && !Array.isArray(body.qualificationValues) ? body.qualificationValues : {},
+      qualificationStatus: 'does-not-qualify',
+      failed: Array.isArray(body.failed) ? body.failed.map((item) => String(item || '').trim()).filter(Boolean).slice(0, 20) : [],
+      score: body.score ?? null,
+      recordedAt: new Date().toISOString(),
+    };
+    DEMO_STATE.nonQualifierContacts.unshift(record);
+    DEMO_STATE.auditLog.unshift({ id: 'site-demo-non-qualifier-audit-' + Date.now(), time: record.recordedAt, event: 'Non-qualifying record captured', actor: 'Qualification checker', actorUserId: 'system', organisationId: 'org-gcon', ref: record.id, pathway: record.pathway });
+    return json({ contact: { id: record.id, cycleId: record.cycleId, pathway: record.pathway, qualificationStatus: record.qualificationStatus, recordedAt: record.recordedAt } }, 201);
+  }
 
   const actor = actorFor(request);
   if (!actor) return json({ error: 'Authentication required' }, 401);

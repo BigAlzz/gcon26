@@ -203,13 +203,25 @@ test('correction requests leave the queue until the learner resubmits', () => {
   assert.equal(isReviewableApplication(application), true);
 });
 
-test('non-qualifier contact capture does not retain qualification evidence', () => {
+test('non-qualifier record keeps entered qualification values', () => {
   const store = createInitialStore();
-  const contact = recordNonQualifierContact(store, learner, { name: 'Lerato Mokoena', email: 'lerato@example.test', telephone: '082 555 0194', pathway: 'NSC / Grade 12', aps: '12' });
+  const contact = recordNonQualifierContact(store, null, {
+    name: 'Lerato Mokoena',
+    email: 'lerato@example.test',
+    telephone: '082 555 0194',
+    pathway: 'NSC / Grade 12',
+    idNumber: '9901015808081',
+    qualificationValues: { english: '3', lifeSciences: '2', mathematics: '3', mathsLiteracy: '0', lifeOrientation: '4', aps: '12', resultYear: '2025' },
+    failed: ['English at Level 4+', 'Life Sciences at Level 4+'],
+    score: '12',
+  });
   assert.equal(contact.email, 'lerato@example.test');
   assert.equal(store.nonQualifierContacts.length, 1);
-  assert.equal('pathway' in store.nonQualifierContacts[0], false);
-  assert.equal('aps' in store.nonQualifierContacts[0], false);
+  assert.equal(contact.qualificationStatus, 'does-not-qualify');
+  assert.equal(contact.pathway, 'NSC / Grade 12');
+  assert.equal(contact.idNumber, '9901015808081');
+  assert.equal(contact.qualificationValues.english, '3');
+  assert.deepEqual(contact.failed, ['English at Level 4+', 'Life Sciences at Level 4+']);
 });
 
 test('staff document decisions update the application evidence and audit trail', () => {

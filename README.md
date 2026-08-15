@@ -15,9 +15,9 @@ Open [http://127.0.0.1:4173/](http://127.0.0.1:4173/). The Vite server proxies `
 
 ## ChatGPT Sites demo
 
-The current frontend demo is published privately on ChatGPT Sites at [https://gcon-nursing-intake.alistairljohanson.chatgpt.site](https://gcon-nursing-intake.alistairljohanson.chatgpt.site). Access is restricted to the owning ChatGPT account unless the Sites access policy is deliberately changed.
+The current frontend demo is published publicly on ChatGPT Sites at [https://gcon-nursing-intake.alistairljohanson.chatgpt.site](https://gcon-nursing-intake.alistairljohanson.chatgpt.site).
 
-The hosted copy preserves the Applicant, Admissions and Employer demo role pickers and includes a hosted demo worker with seeded presentation data. It is intended for stakeholder demonstration only: the hosted copy does not connect to the local encrypted API, PostgreSQL, Azure Blob Storage or the local uploaded documents, and hosted state-changing actions are not a production persistence boundary. Access management on the hosted URL is explicitly labelled **Sites demo registration**: it accepts demo values only, creates an expiring in-memory learner session, and does not store the password, identifier or personal contact details. Use the local app for real API, authentication, persistence and document workflow acceptance. The platform-admin identity remains available for local API testing, not as a separate hosted UI workspace.
+The hosted copy preserves the Applicant, Admissions and Employer demo role pickers and includes a hosted demo worker with seeded presentation data. It is intended for stakeholder demonstration only: the hosted copy does not connect to the local encrypted API, PostgreSQL, Azure Blob Storage or the local uploaded documents, and hosted state-changing actions are not a production persistence boundary. Access management on the hosted URL is explicitly labelled **Sites demo registration**: it accepts demo values only, creates an expiring in-memory learner session, and does not store the password, identifier or personal contact details. A non-qualifying submission records the entered pathway values, result status, failed criteria and contact details: the local API persists that record in its encrypted store, while the hosted demo keeps it in memory for the current demo runtime. Use the local app for real API, authentication, persistence and document workflow acceptance. The platform-admin identity remains available for local API testing, not as a separate hosted UI workspace.
 
 `npm run build` now compiles the Vite frontend and generates `dist/server/index.js`, a Cloudflare-compatible static/demo worker used by Sites. The project binding is stored in `.openai/hosting.json`; it contains only the Sites project ID. The hosted demo is not the production deployment described in the design specification.
 
@@ -40,6 +40,7 @@ npm run preview -- --host 127.0.0.1 --port 4174
 7. Placements → prepare an offer → confirm campus capacity is enforced → use the Employer portal to accept or decline the released offer.
 8. Dashboard → pause/publish the advert, reload, and confirm the cycle state persists.
 9. Hosted demo → choose Applicant → complete qualification → use the clearly labelled Sites demo registration with throwaway values → confirm the temporary session opens the profile workflow.
+10. Qualification checker → select below-threshold values in descending score lists → check qualification → choose **Keep my details** → confirm the non-qualifying record retains the entered values and status.
 
 The active frontend path uses the local API for workflow state and does not fall back to `src/mockStore.js`. Qualification evaluation is rechecked by the API before the result is displayed. Learner evidence controls use the `/v1` upload-intent, content-upload and completion sequence and retain the returned document state, so file bytes are not falsely marked as uploaded. The local API stores development state in `data/gcon-local-store.enc` using AES-256-GCM and stores local document bytes under `data/documents/`.
 
@@ -59,7 +60,7 @@ Academic ranks are also pathway-scoped:
 - APS, M score and NC(V) percentages are not numerically compared, converted or merged into one intake-wide order.
 - The API recalculates and returns the selected pathway's original score/result before the qualification result is shown. It does not invent a common M score for different certificates.
 
-NC(V) entry is grouped into Fundamental Subjects and Vocational Subjects. Fundamental selectors provide 50–100, while vocational selectors provide 60–100; each group also includes “Below requirement” so an applicant can truthfully record a non-qualifying result.
+NC(V) entry is grouped into Fundamental Subjects and Vocational Subjects. Score selectors run from the highest value to the lowest value and include the full 0–100 range, followed by “Below requirement”, so an applicant can enter an actual low score or use the explicit non-qualifying option. The non-qualifier flow stores the original pathway values, failed criteria, result status, score and contact details.
 
 The profile includes certificate-dependent remaining subjects, previous nursing training records, and up to three detailed work-experience records with dates, current-employment state, employer, job title, responsibilities and reason for leaving.
 

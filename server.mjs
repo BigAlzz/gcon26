@@ -134,6 +134,14 @@ async function handle(request, response) {
       return;
     }
 
+    if (request.method === 'POST' && url.pathname === '/v1/applications/non-qualifier') {
+      const body = await readJson(request);
+      const contact = recordNonQualifierContact(state, resolveActor(request, state), body);
+      await store.save();
+      sendJson(response, 201, { contact: { id: contact.id, cycleId: contact.cycleId, pathway: contact.pathway, qualificationStatus: contact.qualificationStatus, recordedAt: contact.recordedAt } }, { 'x-request-id': id });
+      return;
+    }
+
     const actor = requireActor(request, state);
 
     if (request.method === 'POST' && url.pathname === '/v1/auth/invitations') {
@@ -208,14 +216,6 @@ async function handle(request, response) {
       const own = state.applications.filter((item) => item.ownerUserId === actor.userId);
       const application = own.find((item) => [APPLICATION_STATUS.DRAFT, APPLICATION_STATUS.CORRECTION_REQUESTED].includes(item.status)) || own.toSorted((a, b) => String(b.submittedAt || b.updated || '').localeCompare(String(a.submittedAt || a.updated || '')))[0];
       sendJson(response, 200, { application: applicationResponse(application), cycle: state.cycle }, { 'x-request-id': id });
-      return;
-    }
-    if (request.method === 'POST' && url.pathname === '/v1/applications/non-qualifier') {
-      requireRoles(actor, [ROLES.LEARNER]);
-      const body = await readJson(request);
-      const contact = recordNonQualifierContact(state, actor, body);
-      await store.save();
-      sendJson(response, 201, { contact: { id: contact.id, cycleId: contact.cycleId, recordedAt: contact.recordedAt } }, { 'x-request-id': id });
       return;
     }
     if (request.method === 'PATCH' && url.pathname === '/v1/applications/me') {
