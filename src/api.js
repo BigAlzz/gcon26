@@ -35,6 +35,15 @@ export async function loginApi(email, password) {
   return result;
 }
 
+export async function registerLearnerApi(payload) {
+  const result = await apiRequest('/v1/auth/learner/register', { method: 'POST', body: JSON.stringify(payload) });
+  if (result?.token && result.user && result.expiresAt) {
+    apiToken = result.token;
+    writeSession(result);
+  }
+  return result;
+}
+
 export async function demoLoginApi(role) {
   const result = await apiRequest('/v1/auth/demo-login', { method: 'POST', body: JSON.stringify({ role }) });
   if (result?.token && result.user) {
@@ -87,6 +96,7 @@ export const getApiApplication = () => apiRequest('/v1/applications/me');
 export const getIntakeConfig = () => apiRequest('/v1/intake/current');
 export const getApiNotifications = () => apiRequest('/v1/notifications');
 export const getApiApplicantChat = () => apiRequest('/v1/applicant/chat');
+export const evaluateQualificationApi = (pathway, values) => apiRequest('/v1/qualification/evaluate', { method: 'POST', body: JSON.stringify({ pathway, values }) });
 export const sendApiApplicantChat = (message) => apiRequest('/v1/applicant/chat', { method: 'POST', body: JSON.stringify({ message }) });
 export const recordApiNonQualifier = (contact) => apiRequest('/v1/applications/non-qualifier', { method: 'POST', body: JSON.stringify(contact) });
 export const saveApiDraft = (application) => apiRequest('/v1/applications/me', { method: 'PATCH', body: JSON.stringify(application) });
@@ -116,8 +126,8 @@ export const recordApiTerminationLetter = async (ref, payload = {}) => refreshSt
 export const getEmployerDashboard = () => apiRequest('/v1/employer/dashboard');
 export const getReviewQueue = () => apiRequest('/v1/reviews/queue');
 
-export async function uploadApiDocument({ type, label, file, ref }) {
-  const intent = await apiRequest('/v1/documents/upload-intent', { method: 'POST', body: JSON.stringify({ type, label, filename: file.name, contentType: file.type, size: file.size, ref }) });
+export async function uploadApiDocument({ type, label, file, ref, pathway, pathwayValues }) {
+  const intent = await apiRequest('/v1/documents/upload-intent', { method: 'POST', body: JSON.stringify({ type, label, filename: file.name, contentType: file.type, size: file.size, ref, pathway, pathwayValues }) });
   if (!intent?.document?.id) return null;
   const uploadResponse = await fetch(intent.document.uploadUrl, { method: 'PUT', headers: { authorization: `Bearer ${apiToken}`, 'content-type': file.type || 'application/octet-stream' }, body: file });
   if (!uploadResponse.ok) return null;

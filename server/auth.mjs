@@ -69,7 +69,8 @@ function publicSession(actor, token, expiresAt) {
 
 export function authenticateLocal(state, email, password) {
   ensureAuthState(state);
-  const user = (state.users || []).find((item) => item.email?.toLowerCase() === String(email || '').trim().toLowerCase());
+  const identifier = String(email || '').trim().toLowerCase();
+  const user = (state.users || []).find((item) => item.email?.toLowerCase() === identifier || item.username?.toLowerCase() === identifier);
   const credentials = user && state.authUsers[user.id];
   if (!user || !credentials || !verifyPassword(password, credentials.passwordHash)) return null;
   const actor = actorForUser(state, user.id);
@@ -78,6 +79,21 @@ export function authenticateLocal(state, email, password) {
   const expiresAt = new Date(Date.now() + SESSION_TTL_MS).toISOString();
   state.sessions[token] = { userId: actor.userId, createdAt: new Date().toISOString(), expiresAt };
   return publicSession(actor, token, expiresAt);
+}
+
+export function registerLearner(state, { username, password, name = '', email = '' } = {}) {
+  ensureAuthState(state);
+  const normalizedUsername = String(username || '').replace(/\s+/g, '');
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  if (!/^\d{13}$/.test(normalizedUsername)) throw Object.assign(new Error('Username must be a 13-digit South African ID number'), { status: 400 });
+  if (String(password || '').length < 8) throw Object.assign(new Error('Password must be at least 8 characters'), { status: 400 });
+  if (normalizedEmail && !normalizedEmail.includes('@')) throw Object.assign(new Error('Email address is invalid'), { status: 400 });
+  const existing = (state.users || []).find((item) => item.username === normalizedUsername || (normalizedEmail && item.email?.toLowerCase() === normalizedEmail));
+  if (existing) throw Object.assign(new Error('An applicant account already exists for these details'), { status: 409 });
+  const user = { id: `user-${crypto.randomUUID()}`, username: normalizedUsername, name: String(name || 'Applicant').trim().slice(0, 160), email: normalizedEmail, roles: [ROLES.LEARNER], organisationIds: [] };
+  state.users.push(user);
+  state.authUsers[user.id] = { passwordHash: hashPassword(password), createdAt: new Date().toISOString(), source: 'learner-registration' };
+  return authenticateLocal(state, normalizedUsername, password);
 }
 
 export function endSession(state, token) {

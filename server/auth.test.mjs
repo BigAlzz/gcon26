@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { acceptInvitation, authenticateLocal, createInvitation, ensureAuthState, resolveActor } from './auth.mjs';
+import { acceptInvitation, authenticateLocal, createInvitation, ensureAuthState, registerLearner, resolveActor } from './auth.mjs';
 import { createInitialStore, ORG_GCON, ROLES } from './domain.mjs';
 
 const requestWith = (headers = {}) => ({ headers });
@@ -24,6 +24,17 @@ test('local login creates an expiring session with membership-derived role', () 
   assert.equal(resolveActor(requestWith({ authorization: `Bearer ${session.token}` }), store).userId, 'user-reviewer');
   store.sessions[session.token].expiresAt = new Date(Date.now() - 1).toISOString();
   assert.equal(resolveActor(requestWith({ authorization: `Bearer ${session.token}` }), store), null);
+});
+
+test('learner access management creates a username-based session without storing plaintext password', () => {
+  const store = createInitialStore();
+  ensureAuthState(store);
+  const session = registerLearner(store, { username: '9901015808082', password: 'learner-pass-1', name: 'New Applicant' });
+  assert.equal(session.user.role, ROLES.LEARNER);
+  assert.equal(session.user.email, '');
+  assert.equal(store.users.find((item) => item.username === '9901015808082')?.name, 'New Applicant');
+  assert.equal(store.authUsers[session.user.userId].passwordHash.includes('learner-pass-1'), false);
+  assert.equal(authenticateLocal(store, '9901015808082', 'learner-pass-1')?.user.userId, session.user.userId);
 });
 
 test('supervisors can invite and a member can accept into the organisation', () => {

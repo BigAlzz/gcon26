@@ -193,7 +193,7 @@ export function createInitialStore() {
     },
     organisations: [{ id: ORG_GCON, name: 'Gauteng College of Nursing', code: 'GCON', active: true }],
     users: [
-      { id: 'user-learner-demo', name: 'Lerato Mokoena', email: 'lerato.mokoena@email.com', roles: [ROLES.LEARNER], organisationIds: [] },
+      { id: 'user-learner-demo', username: '9901015808081', name: 'Lerato Mokoena', email: 'lerato.mokoena@email.com', roles: [ROLES.LEARNER], organisationIds: [] },
       { id: 'user-reviewer', name: 'Thandi Mokoena', email: 'thandi.mokoena@gcon.example', roles: [ROLES.STAFF_REVIEWER, ROLES.STAFF_SUPERVISOR], organisationIds: [ORG_GCON] },
       { id: 'user-employer', name: 'GCON Placement Team', email: 'placements@gcon.example', roles: [ROLES.EMPLOYER_COORDINATOR], organisationIds: [ORG_GCON] },
       { id: 'user-admin', name: 'Platform Administrator', email: 'admin@gcon.example', roles: [ROLES.ADMIN], organisationIds: [ORG_GCON] },

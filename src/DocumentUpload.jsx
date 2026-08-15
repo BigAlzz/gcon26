@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { uploadApiDocument } from './api.js?placement=1';
 
-export function UploadableDocumentRow({ label, required, checked, onChange }) {
+export function UploadableDocumentRow({ label, required, checked, onChange, pathway, pathwayValues, ref }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
 
@@ -10,8 +10,8 @@ export function UploadableDocumentRow({ label, required, checked, onChange }) {
     if (!file) return;
     setUploading(true);
     setError('');
-    const result = await uploadApiDocument({ type: label.toLowerCase().includes('id') ? 'identity' : 'results', label, file });
-    if (result?.document) onChange();
+    const result = await uploadApiDocument({ type: label.toLowerCase().includes('id') ? 'identity' : 'results', label, file, ref, pathway, pathwayValues });
+    if (result?.document) onChange(result.document);
     else setError('Upload could not be saved. Please try again.');
     setUploading(false);
     event.target.value = '';

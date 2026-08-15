@@ -3,9 +3,10 @@ import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { URL } from 'node:url';
 import { addAudit, applyReviewDecision, canReadApplication, createOrUpdateDraft, dashboardMetrics, findApplication, hasRole, isReviewableApplication, issueCommunication, massDeclineApplications, recordInterviewOutcome, recordNonQualifierContact, recordPlacementResponse, recordStaffPlacement, recordTerminationLetter, reviewDocument, saveDraft, submitApplication, updateIntakeCycle, visibleState, CAMPUS_DIRECTORY, ROLES, APPLICATION_STATUS } from './server/domain.mjs';
-import { acceptInvitation, authenticateLocal, createInvitation, endSession, ensureAuthState, requireActor, requireRoles, resolveActor } from './server/auth.mjs';
+import { acceptInvitation, authenticateLocal, createInvitation, endSession, ensureAuthState, registerLearner, requireActor, requireRoles, resolveActor } from './server/auth.mjs';
 import { LocalEncryptedStore, providerStatus, publicStoragePath } from './server/storage.mjs';
 import { validateChecksum, validateDocumentMetadata, validateUploadedContent } from './server/upload-policy.mjs';
+import { evaluateQualification } from './src/qualification.js';
 
 const host = process.env.HOST || '127.0.0.1';
 const port = Number(process.env.PORT || 4000);
@@ -90,14 +91,27 @@ async function handle(request, response) {
       sendJson(response, 200, { token, user: { userId: session.userId, role: session.role, organisationId: session.organisationId, name: session.name } }, { 'x-request-id': id });
       return;
     }
+    if (request.method === 'POST' && url.pathname === '/v1/qualification/evaluate') {
+      const body = await readJson(request);
+      if (!['NSC / Grade 12', 'Senior Certificate', 'NC(V) Level 4'].includes(body.pathway)) throw Object.assign(new Error('Unsupported qualification pathway'), { status: 400 });
+      sendJson(response, 200, { qualification: evaluateQualification(body.pathway, body.values || {}) }, { 'x-request-id': id });
+      return;
+    }
 
     const state = store.state;
     if (request.method === 'POST' && url.pathname === '/v1/auth/login') {
       const body = await readJson(request);
-      const session = authenticateLocal(state, body.email, body.password);
+      const session = authenticateLocal(state, body.email || body.username, body.password);
       if (!session) throw Object.assign(new Error('Email or password is incorrect'), { status: 401 });
       await store.save();
       sendJson(response, 200, session, { 'x-request-id': id });
+      return;
+    }
+    if (request.method === 'POST' && url.pathname === '/v1/auth/learner/register') {
+      const body = await readJson(request);
+      const session = registerLearner(state, body);
+      await store.save();
+      sendJson(response, 201, session, { 'x-request-id': id });
       return;
     }
     if (request.method === 'POST' && url.pathname === '/v1/auth/logout') {

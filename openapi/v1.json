@@ -2,8 +2,8 @@
   "openapi": "3.0.3",
   "info": {
     "title": "GCON 2027 Nursing Application Platform API",
-    "version": "1.0.0",
-    "description": "Release 1 contract for learner intake, staff review, employer placement, notifications, and audit workflows. Eligibility decisions remain manual."
+    "version": "1.1.0",
+    "description": "Release 1 contract for learner intake, staff review, employer placement, notifications, and audit workflows. Eligibility decisions remain manual. Original qualification-pathway values are preserved; academic ranks are pathway-scoped and no cross-pathway common score is currently approved."
   },
   "servers": [
     { "url": "/" }
@@ -14,6 +14,7 @@
   "tags": [
     { "name": "Authentication" },
     { "name": "Learner applications" },
+    { "name": "Learner support" },
     { "name": "Documents" },
     { "name": "Staff review" },
     { "name": "Employer placement" },
@@ -25,6 +26,26 @@
         "tags": ["Administration"],
         "security": [],
         "responses": { "200": { "description": "Service health and active storage adapter" } }
+      }
+    },
+    "/v1/openapi.json": {
+      "get": {
+        "tags": ["Administration"],
+        "security": [],
+        "responses": { "200": { "description": "This machine-readable OpenAPI contract" } }
+      }
+    },
+    "/v1/storage/status": {
+      "get": {
+        "tags": ["Administration"],
+        "responses": { "200": { "description": "Active storage provider and non-sensitive local adapter status" }, "401": { "$ref": "#/components/responses/Unauthorized" } }
+      }
+    },
+    "/v1/state": {
+      "get": {
+        "tags": ["Administration"],
+        "description": "Returns the authenticated actor's role- and organisation-scoped state. Application academicRank values are calculated only within the same qualification pathway; academicScore retains the pathway's original score type.",
+        "responses": { "200": { "description": "Role-scoped application and workflow state" }, "401": { "$ref": "#/components/responses/Unauthorized" } }
       }
     },
     "/v1/auth/session": {
@@ -76,6 +97,24 @@
           "content": { "application/json": { "schema": { "$ref": "#/components/schemas/DemoLogin" } } }
         },
         "responses": { "200": { "description": "Demo session and actor identity" }, "400": { "$ref": "#/components/responses/BadRequest" }, "404": { "$ref": "#/components/responses/NotFound" } }
+      }
+    },
+    "/v1/auth/learner/register": {
+      "post": {
+        "tags": ["Authentication"],
+        "security": [],
+        "description": "Creates a learner account using the applicant's South African ID number as the username and returns an authenticated session.",
+        "requestBody": { "$ref": "#/components/requestBodies/LearnerRegistration" },
+        "responses": { "201": { "description": "Learner account created and session established" }, "400": { "$ref": "#/components/responses/BadRequest" }, "409": { "description": "An applicant account already exists for these details" } }
+      }
+    },
+    "/v1/qualification/evaluate": {
+      "post": {
+        "tags": ["Learner applications"],
+        "security": [],
+        "description": "Evaluates one pathway using its original reported values. This does not create a cross-pathway common score.",
+        "requestBody": { "$ref": "#/components/requestBodies/QualificationEvaluation" },
+        "responses": { "200": { "description": "Pathway qualification result and original reported score" }, "400": { "$ref": "#/components/responses/BadRequest" } }
       }
     },
     "/v1/intake/current": {
@@ -150,6 +189,7 @@
     "/v1/reviews/queue": {
       "get": {
         "tags": ["Staff review"],
+        "description": "Returns reviewable records for the actor's organisation. Reported APS, M score and NC(V) percentage values are preserved and must not be treated as a common cross-pathway score.",
         "responses": { "200": { "description": "Organisation-scoped review queue" }, "403": { "$ref": "#/components/responses/Forbidden" } }
       }
     },
@@ -202,12 +242,28 @@
         "responses": { "200": { "description": "Candidates released to the employer organisation" }, "403": { "$ref": "#/components/responses/Forbidden" } }
       }
     },
+    "/v1/placements/{ref}/prepare": {
+      "post": {
+        "tags": ["Staff review"],
+        "parameters": [{ "$ref": "#/components/parameters/ApplicationReference" }],
+        "requestBody": { "$ref": "#/components/requestBodies/PlacementPrepare" },
+        "responses": { "200": { "description": "Placement offer prepared, campus capacity reserved, and candidate released to the employer organisation" }, "400": { "$ref": "#/components/responses/BadRequest" }, "403": { "$ref": "#/components/responses/Forbidden" }, "409": { "description": "The campus is full or the application is not eligible for a placement offer" } }
+      }
+    },
     "/v1/placements/{ref}/response": {
       "post": {
         "tags": ["Employer placement"],
         "parameters": [{ "$ref": "#/components/parameters/ApplicationReference" }],
         "requestBody": { "$ref": "#/components/requestBodies/PlacementResponse" },
         "responses": { "200": { "description": "Recorded employer placement response" }, "403": { "$ref": "#/components/responses/Forbidden" } }
+      }
+    },
+    "/v1/applications/{ref}/withdrawal": {
+      "patch": {
+        "tags": ["Staff review"],
+        "parameters": [{ "$ref": "#/components/parameters/ApplicationReference" }],
+        "requestBody": { "$ref": "#/components/requestBodies/Withdrawal" },
+        "responses": { "200": { "description": "Applicant withdrawal recorded with reason and audit event" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" } }
       }
     },
     "/v1/placements/{ref}/termination-letter": {
@@ -222,7 +278,7 @@
       "post": {
         "tags": ["Administration"],
         "requestBody": { "$ref": "#/components/requestBodies/CommunicationIssue" },
-        "responses": { "202": { "description": "Communication batch queued" }, "403": { "$ref": "#/components/responses/Forbidden" } }
+        "responses": { "200": { "description": "Communication batch created with linked learner notifications and updated role-scoped state" }, "403": { "$ref": "#/components/responses/Forbidden" } }
       }
     },
     "/v1/communications": {
@@ -239,11 +295,11 @@
     },
     "/v1/applicant/chat": {
       "get": {
-        "tags": ["Learner"],
+        "tags": ["Learner support"],
         "responses": { "200": { "description": "In-app support messages for the authenticated learner" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" } }
       },
       "post": {
-        "tags": ["Learner"],
+        "tags": ["Learner support"],
         "requestBody": { "$ref": "#/components/requestBodies/ApplicantChatMessage" },
         "responses": { "201": { "description": "Applicant message recorded in the in-app support conversation" }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" } }
       }
@@ -260,7 +316,7 @@
       "bearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT" }
     },
     "parameters": {
-      "ApplicationReference": { "name": "ref", "in": "path", "required": true, "schema": { "type": "string", "pattern": "^GCON-[0-9]{8}-[0-9]{4}$" } },
+      "ApplicationReference": { "name": "ref", "in": "path", "required": true, "schema": { "type": "string", "pattern": "^GCON[0-9]{8}-[0-9]{2,}$" } },
       "DocumentId": { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "minLength": 8 } },
       "IdempotencyKey": { "name": "x-idempotency-key", "in": "header", "required": false, "schema": { "type": "string", "maxLength": 128 } }
     },
@@ -272,7 +328,9 @@
     },
     "requestBodies": {
       "ApplicationDraft": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApplicationDraft" } } } },
-      "Login": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["email", "password"], "properties": { "email": { "type": "string", "format": "email" }, "password": { "type": "string", "minLength": 8 } }, "additionalProperties": false } } } },
+      "Login": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["password"], "properties": { "email": { "type": "string", "format": "email" }, "username": { "type": "string", "pattern": "^\\d{13}$" }, "password": { "type": "string", "minLength": 8 } }, "additionalProperties": false } } } },
+      "LearnerRegistration": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["username", "password"], "properties": { "username": { "type": "string", "pattern": "^\\d{13}$" }, "password": { "type": "string", "minLength": 8 }, "name": { "type": "string", "maxLength": 160 }, "email": { "type": "string", "format": "email", "maxLength": 255 } }, "additionalProperties": false } } } },
+      "QualificationEvaluation": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["pathway", "values"], "properties": { "pathway": { "type": "string", "enum": ["Senior Certificate", "NSC / Grade 12", "NC(V) Level 4"] }, "values": { "type": "object", "additionalProperties": true } }, "additionalProperties": false } } } },
       "InvitationCreate": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["email", "role"], "properties": { "email": { "type": "string", "format": "email" }, "name": { "type": "string", "maxLength": 160 }, "role": { "type": "string", "enum": ["staff_reviewer", "staff_supervisor", "employer_member", "employer_coordinator"] } }, "additionalProperties": false } } } },
       "InvitationAccept": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["token", "password"], "properties": { "token": { "type": "string" }, "name": { "type": "string", "maxLength": 160 }, "password": { "type": "string", "minLength": 8 } }, "additionalProperties": false } } } },
       "IntakeUpdate": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "name": { "type": "string", "minLength": 3, "maxLength": 120 }, "status": { "type": "string", "enum": ["Published", "Paused"] }, "openDate": { "type": "string", "format": "date" }, "closeDate": { "type": "string", "format": "date" }, "documentTypes": { "type": "array", "minItems": 2, "maxItems": 8, "items": { "type": "string", "maxLength": 160 } }, "requirements": { "type": "object", "additionalProperties": { "type": "string", "maxLength": 600 } }, "campusCapacities": { "type": "object", "description": "Maximum placement offers per configured campus for this intake cycle.", "additionalProperties": { "type": "integer", "minimum": 0, "maximum": 100000 } } }, "additionalProperties": false } } } },
@@ -284,15 +342,17 @@
       "ShortlistAction": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["ref"], "properties": { "ref": { "type": "string" }, "action": { "type": "string", "enum": ["add", "remove"] }, "reason": { "type": "string" } }, "additionalProperties": false } } } },
       "InterviewInvite": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["ref"], "properties": { "ref": { "type": "string" }, "scheduledAt": { "type": "string", "format": "date-time" } }, "additionalProperties": false } } } },
       "InterviewOutcome": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["outcome"], "properties": { "outcome": { "type": "string", "enum": ["passed", "failed", "no_show", "pending"] }, "score": { "type": "string", "maxLength": 40 }, "notes": { "type": "string", "maxLength": 500 } }, "additionalProperties": false } } } },
+      "PlacementPrepare": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["campus"], "properties": { "campus": { "type": "string", "minLength": 2, "maxLength": 160 } }, "additionalProperties": false } } } },
       "TerminationLetter": { "required": false, "content": { "application/json": { "schema": { "type": "object", "properties": { "filename": { "type": "string", "maxLength": 255 }, "notes": { "type": "string", "maxLength": 500 } }, "additionalProperties": false } } } },
       "PlacementResponse": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["response"], "properties": { "response": { "type": "string", "enum": ["accept", "decline"] }, "campus": { "type": "string", "maxLength": 160 } }, "additionalProperties": false } } } },
-      "CommunicationIssue": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["audience"], "properties": { "audience": { "type": "string", "enum": ["Shortlisted applicants", "Declined applicants", "Withdrawn applicants"] }, "template": { "type": "string", "maxLength": 160 } }, "additionalProperties": false } } } },
+      "Withdrawal": { "required": false, "content": { "application/json": { "schema": { "type": "object", "properties": { "reason": { "type": "string", "maxLength": 500 } }, "additionalProperties": false } } } },
+      "CommunicationIssue": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["audience"], "properties": { "audience": { "type": "string", "enum": ["Shortlisted applicants", "Declined applicants", "Withdrawn applicants"] }, "template": { "type": "string", "maxLength": 160 }, "message": { "type": "string", "maxLength": 4000 } }, "additionalProperties": false } } } },
       "ApplicantChatMessage": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["message"], "properties": { "message": { "type": "string", "minLength": 1, "maxLength": 1000 } }, "additionalProperties": false } } } }
     },
     "schemas": {
       "DemoLogin": { "type": "object", "required": ["role"], "properties": { "role": { "type": "string", "enum": ["learner", "staff", "employer", "admin"] } }, "additionalProperties": false },
-      "MinimalContact": { "type": "object", "required": ["name", "email", "telephone"], "properties": { "name": { "type": "string", "maxLength": 160 }, "email": { "type": "string", "format": "email", "maxLength": 255 }, "telephone": { "type": "string", "maxLength": 40 } }, "additionalProperties": false },
-      "ApplicationDraft": { "type": "object", "description": "Pathway-specific draft. The server preserves original reported values and creates the immutable submission snapshot at submit time.", "properties": { "pathway": { "type": "string", "enum": ["Senior Certificate / Standard 10", "NSC / Grade 12", "NC(V) Level 4"] }, "pathwayValues": { "type": "object", "additionalProperties": true }, "profile": { "type": "object", "additionalProperties": true }, "documents": { "type": "array", "items": { "type": "object" } } }, "additionalProperties": true },
+      "MinimalContact": { "type": "object", "required": ["name", "email", "telephone"], "properties": { "name": { "type": "string", "maxLength": 160 }, "email": { "type": "string", "format": "email", "maxLength": 255 }, "telephone": { "type": "string", "maxLength": 40 }, "pathway": { "type": "string" }, "idNumber": { "type": "string", "description": "Accepted for display context only; the contact record does not retain qualification evidence." } }, "additionalProperties": false },
+      "ApplicationDraft": { "type": "object", "description": "Pathway-specific draft. The server preserves original reported values and creates the immutable submission snapshot at submit time. It does not convert APS, M score or NC(V) percentages into a common score.", "properties": { "pathway": { "type": "string", "enum": ["Senior Certificate", "NSC / Grade 12", "NC(V) Level 4"] }, "pathwayValues": { "type": "object", "additionalProperties": true }, "profile": { "type": "object", "additionalProperties": true }, "additionalSubjects": { "type": "array", "items": { "type": "object" } }, "trainingHistory": { "type": "array", "items": { "type": "object" } }, "experience": { "type": "array", "items": { "type": "object" } }, "documents": { "type": "array", "items": { "type": "object" } } }, "additionalProperties": true },
       "ApplicantChatMessage": { "type": "object", "required": ["id", "message", "direction", "status", "sentAt"], "properties": { "id": { "type": "string" }, "applicationRef": { "type": ["string", "null"] }, "message": { "type": "string" }, "direction": { "type": "string", "enum": ["inbound", "outbound"] }, "status": { "type": "string" }, "sentAt": { "type": "string", "format": "date-time" } } },
       "ErrorResponse": { "type": "object", "required": ["error"], "properties": { "error": { "type": "object", "required": ["code", "message", "requestId"], "properties": { "code": { "type": "string" }, "message": { "type": "string" }, "requestId": { "type": "string", "format": "uuid" } } } } }
     }
