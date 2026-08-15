@@ -228,3 +228,4 @@ table { font-size: 13px; } th { color: #526674; font-size: 11px; } td { color: #
 @media (max-width: 640px) { .address-map { min-height: 230px; } }
 @media (max-width: 720px) { .global-help-button { top: 51px; right: 68px; width: 30px; height: 30px; } }
 @media (max-width: 720px) { .access-active { align-items: flex-start; flex-wrap: wrap; }.access-active .primary-button { width: 100%; margin-left: 38px; }.nonqualifier-summary, .subject-entry { grid-template-columns: 1fr; }.field-wide { grid-column: auto; } }
+.sites-demo-banner { display: grid; gap: 4px; margin: 16px 0 4px; padding: 12px 13px; border: 1px solid #e5d6ad; border-radius: 6px; background: #fffaf0; }.sites-demo-banner strong { color: #765c1b; font-size: 11px; }.sites-demo-banner span { color: #8a784d; font-size: 10px; line-height: 1.5; }

@@ -87,6 +87,19 @@ async function api(request, url) {
     sessions.set(token, actor);
     return json({ token, user: actor, expiresAt: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString() });
   }
+  if (request.method === 'POST' && url.pathname === '/v1/auth/learner/register') {
+    const body = await request.json().catch(() => ({}));
+    const username = String(body.username || '').trim();
+    const password = String(body.password || '');
+    if (username.length !== 13 || [...username].some((character) => character < '0' || character > '9')) return json({ error: { code: 'VALIDATION_ERROR', message: 'Use the 13-digit demo username shown on the page.' } }, 400);
+    if (password.length < 8) return json({ error: { code: 'VALIDATION_ERROR', message: 'The demo password must be at least 8 characters.' } }, 400);
+    // This hosted-only route deliberately does not retain the username, password,
+    // name or email. It creates an expiring session so the workflow can be tested.
+    const token = 'gcon-site-temporary-' + crypto.randomUUID();
+    const actor = { userId: 'site-demo-learner-' + token.slice(-12), role: 'learner', name: 'Sites demo applicant', organisationId: null, demo: true, temporary: true };
+    sessions.set(token, actor);
+    return json({ token, user: actor, demo: true, temporary: true, expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString() });
+  }
   if (request.method === 'GET' && url.pathname === '/v1/intake/current') return json({ cycle: DEMO_STATE.cycle });
   if (request.method === 'PATCH' && url.pathname === '/v1/intake/current') {
     const actor = actorFor(request);

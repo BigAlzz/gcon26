@@ -17,7 +17,7 @@ Open [http://127.0.0.1:4173/](http://127.0.0.1:4173/). The Vite server proxies `
 
 The current frontend demo is published privately on ChatGPT Sites at [https://gcon-nursing-intake.alistairljohanson.chatgpt.site](https://gcon-nursing-intake.alistairljohanson.chatgpt.site). Access is restricted to the owning ChatGPT account unless the Sites access policy is deliberately changed.
 
-The hosted copy preserves the Applicant, Admissions and Employer demo role pickers and includes a hosted demo worker with seeded presentation data. It is intended for stakeholder demonstration only: the hosted copy does not connect to the local encrypted API, PostgreSQL, Azure Blob Storage or the local uploaded documents, and hosted state-changing actions are not a production persistence boundary. Use the local app for API and document workflow acceptance. The platform-admin identity remains available for local API testing, not as a separate hosted UI workspace.
+The hosted copy preserves the Applicant, Admissions and Employer demo role pickers and includes a hosted demo worker with seeded presentation data. It is intended for stakeholder demonstration only: the hosted copy does not connect to the local encrypted API, PostgreSQL, Azure Blob Storage or the local uploaded documents, and hosted state-changing actions are not a production persistence boundary. Access management on the hosted URL is explicitly labelled **Sites demo registration**: it accepts demo values only, creates an expiring in-memory learner session, and does not store the password, identifier or personal contact details. Use the local app for real API, authentication, persistence and document workflow acceptance. The platform-admin identity remains available for local API testing, not as a separate hosted UI workspace.
 
 `npm run build` now compiles the Vite frontend and generates `dist/server/index.js`, a Cloudflare-compatible static/demo worker used by Sites. The project binding is stored in `.openai/hosting.json`; it contains only the Sites project ID. The hosted demo is not the production deployment described in the design specification.
 
@@ -39,7 +39,7 @@ npm run preview -- --host 127.0.0.1 --port 4174
 6. Applications → select eligible under-review records → mass decline → confirm the individual in-app outcomes and batch audit event.
 7. Placements → prepare an offer → confirm campus capacity is enforced → use the Employer portal to accept or decline the released offer.
 8. Dashboard → pause/publish the advert, reload, and confirm the cycle state persists.
-9. Hosted demo → choose a demo role → confirm the corresponding learner, admissions or employer workspace loads and the same help guidance is present.
+9. Hosted demo → choose Applicant → complete qualification → use the clearly labelled Sites demo registration with throwaway values → confirm the temporary session opens the profile workflow.
 
 The active frontend path uses the local API for workflow state and does not fall back to `src/mockStore.js`. Qualification evaluation is rechecked by the API before the result is displayed. Learner evidence controls use the `/v1` upload-intent, content-upload and completion sequence and retain the returned document state, so file bytes are not falsely marked as uploaded. The local API stores development state in `data/gcon-local-store.enc` using AES-256-GCM and stores local document bytes under `data/documents/`.
 
