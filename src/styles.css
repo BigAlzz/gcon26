@@ -235,3 +235,21 @@ table { font-size: 13px; } th { color: #526674; font-size: 11px; } td { color: #
 .checker-card .pathway-tabs button.selected { background: #edf5fb; }
 .nonqualifier-card > .primary-button { width: 100%; border-radius: 3px; }
 @media (max-width: 720px) { .checker-card .pathway-tabs { grid-template-columns: 1fr; } }
+
+.worklist-controls { display: grid; gap: 14px; margin-bottom: 16px; padding: 16px 18px; }
+.worklist-filter-grid, .worklist-sort-grid { display: grid; gap: 12px; align-items: end; }
+.worklist-filter-grid { grid-template-columns: minmax(240px, 1.7fr) repeat(2, minmax(160px, .8fr)); }
+.worklist-sort-grid { grid-template-columns: repeat(3, minmax(150px, .8fr)) minmax(230px, 1.2fr); padding-top: 14px; border-top: 1px solid #e2ebe7; }
+.worklist-control { display: grid; gap: 6px; min-width: 0; }
+.worklist-control > span { color: #48615a; font-size: 11px; font-weight: 800; letter-spacing: .02em; }
+.worklist-control input, .worklist-control select { min-height: 40px; width: 100%; padding: 9px 11px; border: 1px solid #bfd1ca; border-radius: 4px; background: #fff; color: #173d33; font: inherit; }
+.worklist-control input:focus, .worklist-control select:focus { outline: 3px solid rgba(31, 110, 89, .16); border-color: #1f6e59; }
+.worklist-summary { display: grid; gap: 4px; min-height: 40px; align-content: center; padding-left: 8px; border-left: 3px solid #d3a746; }
+.worklist-summary strong { color: #173d33; font-size: 14px; }
+.worklist-summary span, .worklist-helper { color: #5a716b; font-size: 11px; line-height: 1.45; }
+.worklist-helper { margin: 0; }
+.worklist-pagination { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 16px; border-top: 1px solid #e2ebe7; color: #5a716b; font-size: 11px; }
+.worklist-pagination > div { display: flex; align-items: center; gap: 10px; }
+.worklist-pagination .quiet-button { min-height: 34px; padding: 7px 12px; }
+@media (max-width: 900px) { .worklist-filter-grid, .worklist-sort-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }.worklist-summary { padding-left: 0; border-left: 0; } }
+@media (max-width: 560px) { .worklist-filter-grid, .worklist-sort-grid { grid-template-columns: 1fr; }.worklist-pagination { align-items: flex-start; flex-direction: column; }.worklist-pagination > div { width: 100%; justify-content: space-between; } }

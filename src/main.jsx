@@ -5,7 +5,8 @@ import { acceptInvitationApi, createApiApplication, demoLoginApi, evaluateQualif
 import { defaultQualification, evaluateQualification, pathways } from './qualification';
 import { UploadableDocumentRow } from './DocumentUpload.jsx';
 import { AddressMapPicker } from './AddressMapPicker.jsx';
-import { CompleteAuditPage, CompleteLettersPage, CompletePlacementsPage, CompleteReportsPage, CompleteReviewQueue, CompleteShortlistPage, MassApplicationsPage } from './CompleteWorkspacePages.jsx';
+import { CompleteAuditPage, CompleteLettersPage, CompletePlacementsPage, CompleteReportsPage, CompleteReviewQueue, CompleteShortlistPage } from './CompleteWorkspacePages.jsx';
+import { MassApplicationsPage } from './MassApplicationsWorklist.jsx';
 import { CompleteReviewApplicationMinimal } from './CompleteApplicantViews.jsx';
 import { CompleteEmployerWorkspace } from './CompleteEmployerWorkspace.jsx';
 import { DEFAULT_CAMPUS_CAPACITIES } from '../shared/campusCapacity.mjs';
