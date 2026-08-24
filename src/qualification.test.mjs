@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { defaultQualification, evaluateQualification, mathematicsScore, selectMathematicsResult } from './qualification.js';
+import { defaultQualification, evaluateQualification, mathematicsScore, selectMathematicsResult, seniorCertificateMScore } from './qualification.js';
 
 test('NSC mathematics alternatives default to zero without a calculated score', () => {
   const defaults = defaultQualification['NSC / Grade 12'];
@@ -10,19 +10,22 @@ test('NSC mathematics alternatives default to zero without a calculated score', 
   assert.equal(mathematicsScore(defaults), null);
 });
 
-test('NSC accepts the minimum subject levels and APS boundary', () => {
-  const result = evaluateQualification('NSC / Grade 12', { english: '4', lifeSciences: '4', mathematics: '4', mathsLiteracy: '4', aps: '27' });
+test('NSC accepts the minimum subject levels while APS is verified later', () => {
+  const result = evaluateQualification('NSC / Grade 12', { english: '4', lifeSciences: '4', mathematics: '4', mathsLiteracy: '4' });
   assert.equal(result.status, 'qualifies');
-  assert.equal(evaluateQualification('NSC / Grade 12', { english: '4', lifeSciences: '4', mathematics: '3', mathsLiteracy: '4', aps: '27' }).status, 'does-not-qualify');
-  assert.equal(evaluateQualification('NSC / Grade 12', { english: '4', lifeSciences: '4', mathematics: '3', mathsLiteracy: '5', aps: '27' }).status, 'qualifies');
-  assert.equal(evaluateQualification('NSC / Grade 12', { english: '4', lifeSciences: '4', mathematics: '4', mathsLiteracy: '4', aps: '26.9' }).status, 'does-not-qualify');
+  assert.equal(result.score, 'Pending certificate verification');
+  assert.equal(evaluateQualification('NSC / Grade 12', { english: '4', lifeSciences: '4', mathematics: '3', mathsLiteracy: '4' }).status, 'does-not-qualify');
+  assert.equal(evaluateQualification('NSC / Grade 12', { english: '4', lifeSciences: '4', mathematics: '3', mathsLiteracy: '5' }).status, 'qualifies');
 });
 
-test('Senior Certificate accepts approved HG/SG results and requires M score 17', () => {
-  const result = evaluateQualification('Senior Certificate', { english: 'HG D', biology: 'SG C', mathematics: 'HG D', mScore: '17' });
+test('Senior Certificate calculates M score from submitted grade bands', () => {
+  assert.equal(seniorCertificateMScore({ english: 'HG C', biology: 'HG C', mathematics: 'HG D' }), 17);
+  const result = evaluateQualification('Senior Certificate', { english: 'HG C', biology: 'HG C', mathematics: 'HG D' });
   assert.equal(result.status, 'qualifies');
-  assert.equal(evaluateQualification('Senior Certificate', { english: 'HG D', biology: 'SG C', mathematics: 'HG D', mScore: '16' }).status, 'does-not-qualify');
-  assert.equal(evaluateQualification('Senior Certificate', { english: 'HG E', biology: 'SG C', mathematics: 'HG D', mScore: '17' }).status, 'does-not-qualify');
+  assert.equal(result.mScore, 17);
+  assert.equal(result.score, '17');
+  assert.equal(evaluateQualification('Senior Certificate', { english: 'HG D', biology: 'HG D', mathematics: 'HG D' }).status, 'does-not-qualify');
+  assert.equal(evaluateQualification('Senior Certificate', { english: 'HG E', biology: 'SG C', mathematics: 'HG D' }).status, 'does-not-qualify');
 });
 
 test('NC(V) applies 50% fundamentals and 60% named vocational boundaries', () => {

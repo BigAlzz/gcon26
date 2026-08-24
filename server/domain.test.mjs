@@ -180,6 +180,19 @@ test('draft saves do not create a submission receipt or submitted audit event', 
   assert.match(store.auditLog[0].event, /draft saved/);
 });
 
+test('Senior Certificate M score is calculated when an application is submitted', () => {
+  const store = createInitialStore();
+  const applicant = { ...learner, userId: 'senior-certificate-learner' };
+  const application = submitApplication(store, applicant, {
+    pathway: 'Senior Certificate',
+    pathwayValues: { english: 'HG C', biology: 'HG C', mathematics: 'HG D' },
+    score: '999',
+  });
+  assert.equal(application.calculatedMScore, '17');
+  assert.equal(application.score, '17');
+  assert.equal(application.qualification.mScore, 17);
+});
+
 test('correction drafts retain the correction state until resubmission', () => {
   const store = createInitialStore();
   const application = store.applications.find((item) => item.status === 'Correction requested');

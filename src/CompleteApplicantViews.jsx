@@ -31,7 +31,7 @@ export function CompleteReviewApplicationMinimal({ application: initialApplicati
   const firstName = profile.firstName || 'Lerato';
   const surname = profile.surname || 'Mokoena';
   const fullName = `${firstName} ${surname}`.trim();
-  const scoreLabel = pathway === 'Senior Certificate' ? 'Reported M score' : pathway === 'NSC / Grade 12' ? 'Reported APS' : 'Reported NC(V) result';
+  const scoreLabel = pathway === 'Senior Certificate' ? 'Calculated M score' : pathway === 'NSC / Grade 12' ? 'Academic score' : 'Reported NC(V) result';
 
   async function submit() {
     if (busy) return;

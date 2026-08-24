@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import { DEFAULT_CAMPUS_CAPACITIES, PLACEMENT_CAPACITY_STATUSES, capacityFor, summarizeCampusCapacities } from '../shared/campusCapacity.mjs';
+import { seniorCertificateMScore } from '../src/qualification.js';
 
 export const ROLES = Object.freeze({
   LEARNER: 'learner',
@@ -41,7 +42,7 @@ export const DEMO_CANDIDATE_CONTACTS = Object.freeze({
 });
 
 export const DEFAULT_CYCLE_REQUIREMENTS = Object.freeze({
-  'NSC / Grade 12': 'English Level 4+, Life Sciences Level 4+, Mathematics Level 4 or Maths Literacy Level 5+, reported APS 27+.',
+  'NSC / Grade 12': 'English Level 4+, Life Sciences Level 4+, Mathematics Level 4 or Maths Literacy Level 5+, with APS 27+ verified from the uploaded certificate.',
   'Senior Certificate': 'English, Biology and Mathematics in the approved HG/SG pass bands, plus M score 17+.',
   'NC(V) Level 4': 'Fundamentals at 50%+, with each named vocational subject at 60%+.',
 });
@@ -141,7 +142,7 @@ export function createDemoApplicantPool() {
 export function academicScoreFor(application = {}) {
   const values = application.pathwayValues || {};
   if (application.pathway === 'NSC / Grade 12') return { value: Number.parseFloat(values.aps ?? application.score), label: 'APS', display: String(values.aps ?? application.score ?? 'Not reported') };
-  if (application.pathway === 'Senior Certificate') return { value: Number.parseFloat(values.mScore ?? application.score), label: 'M score', display: String(values.mScore ?? application.score ?? 'Not reported') };
+  if (application.pathway === 'Senior Certificate') return { value: Number.parseFloat(values.mScore ?? application.calculatedMScore ?? application.score), label: 'M score', display: String(values.mScore ?? application.calculatedMScore ?? application.score ?? 'Not reported') };
   if (application.pathway === 'NC(V) Level 4') return { value: Number.parseFloat(String(application.score ?? '').replace('%', '')), label: 'Reported percentage', display: String(application.score ?? 'Not reported') };
   return { value: Number.NaN, label: 'Reported score', display: String(application.score ?? 'Not reported') };
 }
@@ -474,6 +475,12 @@ export function submitApplication(store, actor, payload = {}) {
   if (submitted && existing?.status !== APPLICATION_STATUS.CORRECTION_REQUESTED) throw Object.assign(new Error('A submitted application already exists for this intake'), { status: 409 });
   const application = existing || createOrUpdateDraft(store, actor, payload);
   applyApplicationPayload(application, payload);
+  if (application.pathway === 'Senior Certificate') {
+    const calculatedMScore = seniorCertificateMScore(application.pathwayValues || {});
+    application.calculatedMScore = calculatedMScore === null ? null : String(calculatedMScore);
+    application.score = application.calculatedMScore;
+    application.qualification = { ...(application.qualification || {}), mScore: calculatedMScore, score: application.calculatedMScore };
+  }
   Object.assign(application, { ref: application.ref || nextReference(store), status: APPLICATION_STATUS.UNDER_REVIEW, submittedAt: new Date().toISOString(), updated: new Date().toISOString(), releasedToOrganisationIds: [] });
   if (existing?.status === APPLICATION_STATUS.CORRECTION_REQUESTED) application.correctionResubmittedAt = application.submittedAt;
   addAudit(store, existing?.status === APPLICATION_STATUS.CORRECTION_REQUESTED ? 'Application correction resubmitted' : 'Application submitted', actor, { ref: application.ref });
