@@ -5,8 +5,8 @@ function DocumentState({ label, ready }) {
   return <div className="document-status"><span className={ready ? 'doc-ready' : 'doc-missing'}>{ready ? '✓' : '!'}</span><span>{label}</span><strong>{ready ? 'Ready' : 'Missing'}</strong></div>;
 }
 
-export function CompleteReviewApplicationMinimal({ profile = {}, pathway = 'NSC / Grade 12', preferences, documents, references, previousTraining, experience, additionalSubjects = [], trainingHistory = [], submitted, submittedReference, submitApplication, setStep }) {
-  const [application, setApplication] = useState(null);
+export function CompleteReviewApplicationMinimal({ application: initialApplication, qualificationResult, profile = {}, pathway = 'NSC / Grade 12', preferences, documents, references, previousTraining, experience, additionalSubjects = [], trainingHistory = [], submitted, submittedReference, submitApplication, setStep }) {
+  const [application, setApplication] = useState(initialApplication || null);
   const [notifications, setNotifications] = useState([]);
   const [chatMessages, setChatMessages] = useState([]);
   const [chatText, setChatText] = useState('');
@@ -31,6 +31,7 @@ export function CompleteReviewApplicationMinimal({ profile = {}, pathway = 'NSC 
   const firstName = profile.firstName || 'Lerato';
   const surname = profile.surname || 'Mokoena';
   const fullName = `${firstName} ${surname}`.trim();
+  const scoreLabel = pathway === 'Senior Certificate' ? 'Reported M score' : pathway === 'NSC / Grade 12' ? 'Reported APS' : 'Reported NC(V) result';
 
   async function submit() {
     if (busy) return;
@@ -90,7 +91,7 @@ export function CompleteReviewApplicationMinimal({ profile = {}, pathway = 'NSC 
     <section className="application-sheet"><div className="sheet-head"><div><p className="eyebrow">APPLICATION PREVIEW</p><h2>GCON 2027 - Diploma in Nursing</h2><p>Review your details before submitting. Your submitted application becomes a fixed snapshot.</p></div><div className="draft-tag">Draft - values preserved</div></div>
       <div className="cv-grid"><div className="cv-main">
         <section className="cv-section"><h3>Applicant</h3><div className="cv-fields"><div><span>Full name</span><strong>{fullName}</strong></div><div><span>ID number</span><strong>{profile.idNumber ? `${profile.idNumber.slice(0, 6)}•••••${profile.idNumber.slice(-3)}` : 'Not supplied'}</strong></div><div><span>Email</span><strong>{profile.email || 'Not supplied'}</strong></div><div><span>Telephone</span><strong>{profile.mobile || 'Not supplied'}</strong></div><div><span>Address</span><strong>{[profile.streetAddress, profile.suburb, profile.province].filter(Boolean).join(', ') || 'Not supplied'}</strong></div></div></section>
-        <section className="cv-section"><h3>Education and pathway</h3><div className="cv-fields"><div><span>Pathway</span><strong>{pathway}</strong></div><div><span>School</span><strong>{profile.school || 'Not supplied'}</strong></div><div><span>Result year</span><strong>{profile.resultYear || 'Not supplied'}</strong></div><div><span>Reported score</span><strong className="score-text">{application?.score || 'Preserved in pathway values'}</strong></div></div></section>
+        <section className="cv-section"><h3>Education and pathway</h3><div className="cv-fields"><div><span>Pathway</span><strong>{pathway}</strong></div><div><span>School</span><strong>{profile.school || 'Not supplied'}</strong></div><div><span>Result year</span><strong>{profile.resultYear || 'Not supplied'}</strong></div><div><span>{scoreLabel}</span><strong className="score-text">{application?.score || qualificationResult?.score || qualificationResult?.values?.aps || 'Preserved in pathway values'}</strong></div></div></section>
         <section className="cv-section"><h3>College preferences</h3>{preferences.filter(Boolean).map((preference, index) => <div className="preference-row" key={preference}><span>{index + 1}</span><strong>{preference}</strong><small>Ranked preference - capacity count recorded</small></div>)}</section>
         <section className="cv-section"><h3>Remaining subjects</h3>{additionalSubjects.length ? additionalSubjects.filter((subject) => subject.name?.trim()).map((subject, index) => <div className="preference-row" key={`subject-${index}`}><span>•</span><strong>{subject.name}</strong><small>{subject.result || 'Result not supplied'}</small></div>) : <p className="section-copy">No additional subjects supplied.</p>}</section>
         <section className="cv-section"><h3>Training and experience</h3><div className="cv-fields"><div><span>Previous nursing training</span><strong>{previousTraining}</strong></div><div><span>Training records</span><strong>{trainingHistory.length || 'None'}</strong></div><div><span>Work experience</span><strong>{experience.length ? `${experience.length} entries` : 'None supplied'}</strong></div><div><span>References</span><strong>{references.filter((reference) => reference.name?.trim()).length} recorded</strong></div></div></section>
