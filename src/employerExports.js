@@ -66,6 +66,58 @@ function escapeHtml(value) {
     .replaceAll("'", '&#39;');
 }
 
+const EXPORT_STATUSES = ['Shortlisted', 'Placement ready', 'Placed'];
+
+function escapeXml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&apos;');
+}
+
+function sheetName(campusName, status) {
+  const campus = String(campusName || 'Campus')
+    .replace('Chris Hani Baragwanath Campus', 'CHB')
+    .replace('Ann Latsky Campus', 'Ann Latsky')
+    .replace('SG Lourens Campus', 'SG Lourens')
+    .replace('Bonalesedi Campus', 'Bonalesedi')
+    .replace('Awaiting campus assignment', 'Awaiting');
+  return `${campus} | ${status}`.slice(0, 31);
+}
+
+function workbookCell(value, styleId = 'Body') {
+  return `<Cell ss:StyleID="${styleId}"><Data ss:Type="String">${escapeXml(value)}</Data></Cell>`;
+}
+
+function workbookCandidateRow(application, campus) {
+  const contact = candidateContact(application);
+  return `<Row>${[
+    application.name,
+    application.ref,
+    application.pathway,
+    application.status,
+    contact.mobile,
+    contact.email,
+    campus.contactName,
+    campus.phone,
+    campus.email,
+    campus.address,
+  ].map((value) => workbookCell(value)).join('')}</Row>`;
+}
+
+export function createExcelWorkbookXml(groups = [], cycleName = 'GCON 2027') {
+  const columns = ['Candidate', 'Reference', 'Pathway', 'Status', 'Candidate mobile', 'Candidate email', 'Placement contact', 'Placement phone', 'Placement email', 'Placement address'];
+  const summaryRows = groups.flatMap(({ campus, candidates }) => EXPORT_STATUSES.map((status) => [campus.name, status, candidates.filter((application) => application.status === status).length]));
+  const summary = `<Worksheet ss:Name="Summary"><Table ss:ExpandedColumnCount="3" ss:ExpandedRowCount="${summaryRows.length + 1}" x:FullColumns="1" x:FullRows="1"><Row>${['Campus', 'Status', 'Applicants'].map((heading) => workbookCell(heading, 'Header')).join('')}</Row>${summaryRows.map((row) => `<Row>${workbookCell(row[0])}${workbookCell(row[1])}${workbookCell(row[2])}</Row>`).join('')}</Table></Worksheet>`;
+  const worksheets = groups.flatMap(({ campus, candidates }) => EXPORT_STATUSES.map((status) => {
+    const matching = candidates.filter((application) => application.status === status);
+    return `<Worksheet ss:Name="${escapeXml(sheetName(campus.name, status))}"><Table ss:ExpandedColumnCount="10" ss:ExpandedRowCount="${matching.length + 3}" x:FullColumns="1" x:FullRows="1"><Row>${workbookCell(`${campus.name} · ${status}`, 'Title')}</Row><Row>${columns.map((heading) => workbookCell(heading, 'Header')).join('')}</Row>${matching.length ? matching.map((application) => workbookCandidateRow(application, campus)).join('') : `<Row>${workbookCell('No applicants in this campus/status group')}</Row>`}</Table></Worksheet>`;
+  })).join('');
+  return `<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><DocumentProperties xmlns="urn:schemas-microsoft-com:office:office"><Title>${escapeXml(cycleName)} campus and status export</Title></DocumentProperties><Styles><Style ss:ID="Title"><Font ss:Bold="1" ss:Size="14" ss:Color="#0B2D52"/><Interior ss:Color="#EAF2F7" ss:Pattern="Solid"/></Style><Style ss:ID="Header"><Font ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#0B2D52" ss:Pattern="Solid"/></Style><Style ss:ID="Body"><Alignment ss:Vertical="Top" ss:WrapText="1"/></Style></Styles>${summary}${worksheets}</Workbook>`;
+}
+
 function excelCell(value, className = '') {
   return `<td${className ? ` class="${className}"` : ''}>${escapeHtml(value)}</td>`;
 }
@@ -97,12 +149,12 @@ export function createExcelWorkbookHtml(groups = [], cycleName = 'GCON 2027') {
 
 export function downloadExcelWorkbook(groups, cycleName = 'GCON 2027') {
   if (typeof document === 'undefined' || typeof URL === 'undefined') return false;
-  const blob = new Blob([`\ufeff${createExcelWorkbookHtml(groups, cycleName)}`], { type: 'application/vnd.ms-excel;charset=utf-8' });
+  const blob = new Blob([`\ufeff${createExcelWorkbookXml(groups, cycleName)}`], { type: 'application/vnd.ms-excel;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   const safeName = String(cycleName || 'GCON-2027').trim().replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() || 'gcon-2027';
   link.href = url;
-  link.download = `${safeName}-campus-placement-list.xls`;
+  link.download = `${safeName}-campus-status-workbook.xml`;
   document.body.appendChild(link);
   link.click();
   link.remove();

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { candidateContact, createExcelWorkbookHtml, DEFAULT_CAMPUS_DIRECTORY, groupCandidatesByCampus } from './employerExports.js';
+import { candidateContact, createExcelWorkbookHtml, createExcelWorkbookXml, DEFAULT_CAMPUS_DIRECTORY, groupCandidatesByCampus } from './employerExports.js';
 
 test('campus placement exports group assigned candidates in directory order', () => {
   const groups = groupCandidatesByCampus([
@@ -33,4 +33,19 @@ test('Excel workbook HTML contains campus groups, candidates, and placement cont
   assert.match(html, /Amina Example/);
   assert.match(html, /Candidate mobile/);
   assert.match(html, /annlatsky\.placements@gcon\.example/);
+});
+
+test('Excel workbook XML creates separate tabs for every campus and status', () => {
+  const groups = groupCandidatesByCampus([
+    { ref: 'A', name: 'Amina Example', pathway: 'NSC / Grade 12', status: 'Placed', placementCampus: DEFAULT_CAMPUS_DIRECTORY[0].name },
+    { ref: 'B', name: 'Bongani Example', pathway: 'Senior Certificate', status: 'Shortlisted', placementCampus: DEFAULT_CAMPUS_DIRECTORY[1].name },
+  ], DEFAULT_CAMPUS_DIRECTORY, { includeEmpty: true });
+  const xml = createExcelWorkbookXml(groups, 'GCON 2027');
+
+  assert.match(xml, /<Worksheet ss:Name="Summary">/);
+  assert.match(xml, /<Worksheet ss:Name="Ann Latsky \| Placed">/);
+  assert.match(xml, /<Worksheet ss:Name="CHB \| Shortlisted">/);
+  assert.match(xml, /<Worksheet ss:Name="Bonalesedi \| Placement ready">/);
+  assert.match(xml, /Amina Example/);
+  assert.match(xml, /Bongani Example/);
 });
