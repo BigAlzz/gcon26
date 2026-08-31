@@ -48,8 +48,9 @@ export function CompleteApplicationsPage({ setSelectedRef, setPage }) {
   return <section className="staff-page"><div className="page-heading"><div><p className="eyebrow">APPLICATIONS</p><h1>All submitted applications</h1><p>Search, filter, and open a record for human review.</p></div><button className="outline-button" onClick={() => downloadCsv('gcon-2027-applications.csv', exportRows)}>Export report <span>↓</span></button></div><div className="panel work-panel full-table"><div className="table-toolbar"><div className="search wide"><span className="icon">⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search surname, ID number or reference" /></div><span className="results-count">{visible.length} visible results</span><select className="filter-button" value={pathway} onChange={(event) => setPathway(event.target.value)}><option>All pathways</option><option>NSC / Grade 12</option><option>Senior Certificate</option><option>NC(V) Level 4</option></select></div><div className="table-wrap"><table><thead><tr><th>Applicant</th><th>Reference</th><th>Pathway</th><th>Score</th><th>Status</th><th>Updated</th><th /></tr></thead><tbody>{visible.map((application) => <tr key={application.ref} onClick={() => { setSelectedRef?.(application.ref); setPage('reviewQueue'); }}><td><strong>{application.name}</strong><small>{application.id}</small></td><td>{application.ref}</td><td>{application.pathway}</td><td><strong>{application.score}</strong></td><td><LocalStatus status={application.status} /></td><td>{application.updated}</td><td><button className="row-arrow" aria-label={`Open ${application.ref}`}>→</button></td></tr>)}{visible.length === 0 && <tr><td colSpan="7" className="empty-table">No matching applications.</td></tr>}</tbody></table></div></div></section>;
 }
 
-export function CompleteReviewQueue({ selectedRef: initialRef, setSelectedRef }) {
-  const { data, setData } = useWorkspaceData();
+export function CompleteReviewQueue({ selectedRef: initialRef, setSelectedRef, data: liveData, onDataChange }) {
+  const fallback = useWorkspaceData();
+  const data = liveData || fallback.data;
   const [activeRef, setActiveRef] = useState(initialRef || '');
   const [reason, setReason] = useState('Incorrect or unreadable document');
   const [message, setMessage] = useState('');
@@ -65,14 +66,14 @@ export function CompleteReviewQueue({ selectedRef: initialRef, setSelectedRef })
     const ref = selected.ref;
     const localDecision = decision === 'approve' ? 'approved' : decision === 'decline' ? 'declined' : 'correction';
     const remote = await updateApiDecision(ref, localDecision, reason);
-    if (remote) setData(remote);
+    if (remote) { fallback.setData(remote); onDataChange?.(remote); }
     setMessage(remote ? (decision === 'approve' ? 'Approved for shortlist.' : decision === 'decline' ? 'Application declined with a recorded reason.' : 'Correction request sent to the learner.') : 'The decision could not be saved.');
   }
 
   async function decideDocument(document, decision) {
     if (!document.id) { setMessage('This evidence record has no document ID and cannot be updated.'); return; }
     const remote = await reviewApiDocument(document.id, decision, reason);
-    if (remote) setData(remote);
+    if (remote) { fallback.setData(remote); onDataChange?.(remote); }
     setMessage(remote ? `${document.label}: ${decision === 'verified' ? 'verified.' : decision === 'rejected' ? 'rejected.' : 'correction requested.'}` : 'The document decision could not be saved.');
   }
 
@@ -96,15 +97,16 @@ function InterviewOutcomeEditor({ application, onSaved }) {
   return <div className="interview-outcome"><span className="saved-label">Test invited{application.interview?.outcome ? ` · ${application.interview.outcome}` : ''}</span><select value={outcome} onChange={(event) => setOutcome(event.target.value)} aria-label={`Psychometric outcome for ${application.name}`}><option value="pending">Pending</option><option value="passed">Passed</option><option value="failed">Failed</option><option value="no_show">No show</option></select><input value={score} onChange={(event) => setScore(event.target.value)} placeholder="Score" aria-label={`Psychometric score for ${application.name}`} /><input value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Outcome notes" aria-label={`Psychometric notes for ${application.name}`} /><button className="text-button" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Record outcome'}</button>{message && <small>{message}</small>}</div>;
 }
 
-export function CompleteShortlistPage({ setPage }) {
-  const { data, setData } = useWorkspaceData();
+export function CompleteShortlistPage({ setPage, data: liveData, onDataChange }) {
+  const fallback = useWorkspaceData();
+  const data = liveData || fallback.data;
   const shortlisted = (data.applications || []).filter((application) => shortlistStatuses.includes(application.status));
   const invited = shortlisted.filter((application) => application.interview?.status === 'invited').length;
   async function invite(application) {
     const remote = await inviteApiInterview(application.ref);
-    if (remote) setData(remote);
+    if (remote) { fallback.setData(remote); onDataChange?.(remote); }
   }
-  return <section className="staff-page"><div className="page-heading"><div><p className="eyebrow">SHORTLIST</p><h1>Shortlisted applicants</h1><p>Invite the next evaluation step without turning the shortlist into a final placement decision.</p></div><span className="review-scope"><span className="secure-dot" /> {shortlisted.length} approved · {invited} invited</span></div><div className="panel shortlist-summary"><div className="shortlist-stat"><span>Ready for psychometric tests</span><strong>{shortlisted.filter((item) => !item.interview).length}</strong><small>Awaiting an invitation</small></div><div className="shortlist-stat"><span>Test invitations issued</span><strong>{invited}</strong><small>Recorded against the candidate</small></div><div className="shortlist-stat"><span>Placement phase</span><strong>{shortlisted.filter((item) => ['Placement ready', 'Placed'].includes(item.status)).length}</strong><small>Separate from eligibility</small></div></div><div className="panel work-panel"><div className="panel-heading"><div><h2>Evaluation actions</h2><p>Open a record only after the staff decision is recorded.</p></div><button className="outline-button" onClick={() => setPage('letters')}>Open communications <span>→</span></button></div><div className="shortlist-rows">{shortlisted.map((application) => <div key={application.ref}><span className="queue-avatar">{application.name.split(' ').map((part) => part[0]).join('')}</span><div><strong>{application.name}</strong><small>{application.ref} · {application.pathway}</small></div><LocalStatus status={application.status} />{application.interview?.status === 'invited' ? <InterviewOutcomeEditor application={application} onSaved={setData} /> : <button className="text-button" onClick={() => invite(application)}>Invite psychometric test <span>→</span></button>}</div>)}{shortlisted.length === 0 && <div className="empty-table">No approved candidates are ready for this stage.</div>}</div></div></section>;
+  return <section className="staff-page"><div className="page-heading"><div><p className="eyebrow">SHORTLIST</p><h1>Shortlisted applicants</h1><p>Invite the next evaluation step without turning the shortlist into a final placement decision.</p></div><span className="review-scope"><span className="secure-dot" /> {shortlisted.length} approved · {invited} invited</span></div><div className="panel shortlist-summary"><div className="shortlist-stat"><span>Ready for psychometric tests</span><strong>{shortlisted.filter((item) => !item.interview).length}</strong><small>Awaiting an invitation</small></div><div className="shortlist-stat"><span>Test invitations issued</span><strong>{invited}</strong><small>Recorded against the candidate</small></div><div className="shortlist-stat"><span>Placement phase</span><strong>{shortlisted.filter((item) => ['Placement ready', 'Placed'].includes(item.status)).length}</strong><small>Separate from eligibility</small></div></div><div className="panel work-panel"><div className="panel-heading"><div><h2>Evaluation actions</h2><p>Open a record only after the staff decision is recorded.</p></div><button className="outline-button" onClick={() => setPage('letters')}>Open communications <span>→</span></button></div><div className="shortlist-rows">{shortlisted.map((application) => <div key={application.ref}><span className="queue-avatar">{application.name.split(' ').map((part) => part[0]).join('')}</span><div><strong>{application.name}</strong><small>{application.ref} · {application.pathway}</small></div><LocalStatus status={application.status} />{application.interview?.status === 'invited' ? <InterviewOutcomeEditor application={application} onSaved={(next) => { fallback.setData(next); onDataChange?.(next); }} /> : <button className="text-button" onClick={() => invite(application)}>Invite psychometric test <span>→</span></button>}</div>)}{shortlisted.length === 0 && <div className="empty-table">No approved candidates are ready for this stage.</div>}</div></div></section>;
 }
 
 const defaultCommunicationMessages = Object.freeze({

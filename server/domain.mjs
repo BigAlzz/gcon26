@@ -60,6 +60,15 @@ export function communicationMessageForTemplate(template) {
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 
+export function normalizeApplicationIdNumber(value) {
+  const normalized = String(value || '').replace(/\s+/g, '');
+  return /^\d{13}$/.test(normalized) ? normalized : '';
+}
+
+function applicationIdNumber(application) {
+  return normalizeApplicationIdNumber(application?.id || application?.profile?.idNumber);
+}
+
 export function isReviewableApplication(application) {
   return application?.status === APPLICATION_STATUS.UNDER_REVIEW || (application?.status === APPLICATION_STATUS.CORRECTION_REQUESTED && Boolean(application?.correctionResubmittedAt));
 }
@@ -473,6 +482,9 @@ export function submitApplication(store, actor, payload = {}) {
   const existing = store.applications.find((application) => application.ownerUserId === actor.userId && [APPLICATION_STATUS.DRAFT, APPLICATION_STATUS.CORRECTION_REQUESTED].includes(application.status));
   const submitted = store.applications.find((application) => application.ownerUserId === actor.userId && Boolean(application.submittedAt) && [APPLICATION_STATUS.UNDER_REVIEW, APPLICATION_STATUS.SHORTLISTED, APPLICATION_STATUS.PLACEMENT_READY, APPLICATION_STATUS.PLACED, APPLICATION_STATUS.DECLINED, APPLICATION_STATUS.WITHDRAWN].includes(application.status));
   if (submitted && existing?.status !== APPLICATION_STATUS.CORRECTION_REQUESTED) throw Object.assign(new Error('A submitted application already exists for this intake'), { status: 409 });
+  const incomingIdNumber = normalizeApplicationIdNumber(payload.id || payload.profile?.idNumber);
+  const duplicate = incomingIdNumber && store.applications.some((item) => item !== existing && item.status !== APPLICATION_STATUS.DRAFT && applicationIdNumber(item) === incomingIdNumber);
+  if (duplicate) throw Object.assign(new Error('An application already exists for this ID number for this intake'), { status: 409 });
   const application = existing || createOrUpdateDraft(store, actor, payload);
   applyApplicationPayload(application, payload);
   if (application.pathway === 'Senior Certificate') {

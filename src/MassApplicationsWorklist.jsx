@@ -44,8 +44,9 @@ function metricOptionsFor(pathway) {
   return worklistMetricOptions.filter((option) => !['aps', 'm-score', 'percentage'].includes(option.value) || !pathwayMetric || option.value === pathwayMetric);
 }
 
-export function MassApplicationsPage({ setSelectedRef, setPage }) {
-  const { data, setData } = useWorklistData();
+export function MassApplicationsPage({ setSelectedRef, setPage, data: liveData, onDataChange }) {
+  const fallback = useWorklistData();
+  const data = liveData || fallback.data;
   const [query, setQuery] = useState('');
   const [pathway, setPathway] = useState('All pathways');
   const [status, setStatus] = useState('All statuses');
@@ -64,7 +65,8 @@ export function MassApplicationsPage({ setSelectedRef, setPage }) {
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return applications.filter((application) => {
-      const matchesQuery = !needle || `${application.ref} ${application.name} ${application.id} ${application.pathway}`.toLowerCase().includes(needle);
+      const searchable = [application.ref, application.name, application.id, application.pathway].filter(Boolean).join(' ').toLocaleLowerCase();
+      const matchesQuery = !needle || searchable.includes(needle);
       const matchesPathway = pathway === 'All pathways' || application.pathway === pathway;
       const matchesStatus = status === 'All statuses' || application.status === status;
       return matchesQuery && matchesPathway && matchesStatus;
@@ -106,7 +108,8 @@ export function MassApplicationsPage({ setSelectedRef, setPage }) {
     setBusy(true);
     const result = await massDeclineApi(selectedRefs, reason);
     if (result?.state) {
-      setData(result.state);
+      fallback.setData(result.state);
+      onDataChange?.(result.state);
       setSelectedRefs([]);
       setConfirming(false);
       setMessage(`${result.summary?.declined || selectedRefs.length} applications declined. In-app notifications were created for each learner.`);
@@ -149,4 +152,3 @@ export function MassApplicationsPage({ setSelectedRef, setPage }) {
     </div>
   </section>;
 }
-

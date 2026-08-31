@@ -128,6 +128,14 @@ test('a learner cannot create a second submitted application in the same intake'
   assert.equal(first.status, 'Under review');
 });
 
+test('different learners cannot submit an application with an ID number already used in the intake', () => {
+  const store = createInitialStore();
+  const first = submitApplication(store, learner, { pathway: 'NSC / Grade 12', id: '9101015808081', profile: { idNumber: '9101015808081' } });
+  const otherLearner = { ...learner, userId: 'user-second-learner' };
+  assert.equal(first.id, '9101015808081');
+  assert.throws(() => submitApplication(store, otherLearner, { pathway: 'NSC / Grade 12', id: '9101015808081', profile: { idNumber: '9101015808081' } }), /ID number/);
+});
+
 test('submissions respect the configured intake status and dates', () => {
   const store = createInitialStore();
   assert.equal(isIntakeOpen(store.cycle, new Date('2026-08-04T10:00:00Z')), true);

@@ -203,6 +203,9 @@ async function api(request, url) {
     const idempotencyKey = request.headers.get('x-idempotency-key') || '';
     if (idempotencyKey && submittedDemoApplications.has(idempotencyKey)) return json(submittedDemoApplications.get(idempotencyKey));
     const body = await request.json().catch(() => ({}));
+    const submittedId = String(body.id || body.profile?.idNumber || '').replace(/\s+/g, '');
+    const duplicate = /^\d{13}$/.test(submittedId) && DEMO_STATE.applications.some((item) => item.status !== 'Draft' && String(item.id || item.profile?.idNumber || '').replace(/\s+/g, '') === submittedId && item.ownerUserId !== actor.userId);
+    if (duplicate) return json({ error: 'An application already exists for this ID number for this intake' }, 409);
     const application = saveDemoDraft(actor, body);
     if (!application.ref) application.ref = nextDemoReference();
     application.status = 'Under review';
@@ -212,6 +215,26 @@ async function api(request, url) {
     const result = { application, receipt: { reference: application.ref, submittedAt: application.submittedAt } };
     if (idempotencyKey) submittedDemoApplications.set(idempotencyKey, result);
     return json(result, 201);
+  }
+  const reviewDecisionMatch = url.pathname.match(new RegExp('^/v1/reviews/([^/]+)/decision$'));
+  if (reviewDecisionMatch && request.method === 'POST') {
+    if (!['platform_admin', 'staff_reviewer', 'staff_supervisor'].includes(actor.role)) return json({ error: 'Staff access required' }, 403);
+    const ref = decodeURIComponent(reviewDecisionMatch[1]);
+    const application = DEMO_STATE.applications.find((item) => item.ref === ref);
+    if (!application) return json({ error: 'Application not found' }, 404);
+    const body = await request.json().catch(() => ({}));
+    const decision = String(body.decision || '');
+    if (!['approve', 'decline', 'correction', 'undo'].includes(decision)) return json({ error: 'Unsupported review decision' }, 400);
+    const now = new Date().toISOString();
+    const nextStatus = { approve: 'Shortlisted', decline: 'Declined', correction: 'Correction requested', undo: 'Under review' }[decision];
+    application.status = nextStatus;
+    application.updated = now;
+    application.declineReason = decision === 'decline' ? String(body.reason || '').trim() : undefined;
+    application.correctionRequest = decision === 'correction' ? { reason: String(body.reason || '').trim(), requestedAt: now } : undefined;
+    if (decision === 'correction') application.correctionResubmittedAt = undefined;
+    application.releasedToOrganisationIds = decision === 'approve' ? [application.organisationId || 'org-gcon'] : [];
+    DEMO_STATE.auditLog.unshift({ id: 'site-demo-review-' + Date.now(), time: now, event: 'Application ' + (decision === 'approve' ? 'approved for shortlisting' : decision === 'decline' ? 'declined' : decision === 'correction' ? 'correction requested' : 'decision undone'), actor: actor.name, actorUserId: actor.userId, organisationId: actor.organisationId, ref, reason: String(body.reason || '').trim() });
+    return json({ application, state: DEMO_STATE });
   }
   if (request.method === 'POST' && url.pathname === '/v1/documents/upload-intent') {
     if (actor.role !== 'learner') return json({ error: 'Learner access required' }, 403);

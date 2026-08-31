@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { actorFromToken, ORG_GCON, ROLES } from './domain.mjs';
+import { actorFromToken, normalizeApplicationIdNumber, ORG_GCON, ROLES } from './domain.mjs';
 
 const roleAliases = new Map([
   ['learner', 'demo-learner'],
@@ -90,6 +90,8 @@ export function registerLearner(state, { username, password, name = '', email = 
   if (normalizedEmail && !normalizedEmail.includes('@')) throw Object.assign(new Error('Email address is invalid'), { status: 400 });
   const existing = (state.users || []).find((item) => item.username === normalizedUsername || (normalizedEmail && item.email?.toLowerCase() === normalizedEmail));
   if (existing) throw Object.assign(new Error('An applicant account already exists for these details'), { status: 409 });
+  const duplicateApplication = (state.applications || []).some((item) => item.status !== 'Draft' && normalizeApplicationIdNumber(item.id || item.profile?.idNumber) === normalizedUsername);
+  if (duplicateApplication) throw Object.assign(new Error('An application already exists for this ID number for this intake'), { status: 409 });
   const user = { id: `user-${crypto.randomUUID()}`, username: normalizedUsername, name: String(name || 'Applicant').trim().slice(0, 160), email: normalizedEmail, roles: [ROLES.LEARNER], organisationIds: [] };
   state.users.push(user);
   state.authUsers[user.id] = { passwordHash: hashPassword(password), createdAt: new Date().toISOString(), source: 'learner-registration' };
