@@ -50,6 +50,8 @@ const worker = `
 const ASSETS = ${JSON.stringify(assets)};
 const DEMO_STATE = ${JSON.stringify(demoState)};
 const sessions = new Map();
+const uploadedDemoContent = new Map();
+const submittedDemoApplications = new Map();
 const roles = {
   learner: { userId: 'user-learner-demo', role: 'learner', name: 'Lerato Mokoena', organisationId: null },
   staff: { userId: 'user-reviewer', role: 'staff_supervisor', name: 'Thandi Mokoena', organisationId: 'org-gcon' },
@@ -77,6 +79,34 @@ function campusCapacity(campus) {
 
 function assignedAtCampus(campus, excludingRef = '') {
   return DEMO_STATE.applications.filter((item) => item.ref !== excludingRef && ['Placement ready', 'Placed'].includes(item.status) && item.placementCampus === campus).length;
+}
+
+function applicationFor(actor) {
+  return DEMO_STATE.applications.find((item) => item.ownerUserId === actor.userId && item.status === 'Draft') || null;
+}
+
+function saveDemoDraft(actor, payload = {}) {
+  let application = applicationFor(actor);
+  if (!application) {
+    application = { ref: null, ownerUserId: actor.userId, organisationId: null, releasedToOrganisationIds: [], status: 'Draft', updated: new Date().toISOString(), documents: [] };
+    DEMO_STATE.applications.unshift(application);
+  }
+  const fields = ['pathway', 'pathwayValues', 'profile', 'preferences', 'references', 'previousTraining', 'experience', 'additionalSubjects', 'trainingHistory', 'addressVerified', 'qualification', 'score', 'name', 'id'];
+  for (const field of fields) if (payload[field] !== undefined) application[field] = payload[field];
+  if (payload.documents && typeof payload.documents === 'object' && !Array.isArray(payload.documents)) application.documentChecklist = { ...payload.documents };
+  application.updated = new Date().toISOString();
+  return application;
+}
+
+function demoDocumentResponse(document) {
+  return { id: document.id, ref: document.ref, ownerUserId: document.ownerUserId, type: document.type, label: document.label, filename: document.filename, contentType: document.contentType, size: document.size, state: document.state, scanState: document.scanState, checksum: document.checksum || null };
+}
+
+function nextDemoReference() {
+  const day = new Date().toISOString().slice(0, 10).replaceAll('-', '');
+  const prefix = 'GCON' + day + '-';
+  const count = DEMO_STATE.applications.filter((item) => String(item.ref || '').startsWith(prefix)).length + 1;
+  return prefix + String(count).padStart(2, '0');
 }
 
 async function api(request, url) {
@@ -162,6 +192,64 @@ async function api(request, url) {
   if (request.method === 'GET' && url.pathname === '/v1/state') return json(DEMO_STATE);
   if (request.method === 'GET' && url.pathname === '/v1/applications/me') {
     return json({ application: DEMO_STATE.applications.find((item) => item.ownerUserId === actor.userId) || null });
+  }
+  if (request.method === 'PATCH' && url.pathname === '/v1/applications/me') {
+    if (actor.role !== 'learner') return json({ error: 'Learner access required' }, 403);
+    const body = await request.json().catch(() => ({}));
+    return json({ application: saveDemoDraft(actor, body) });
+  }
+  if (request.method === 'POST' && url.pathname === '/v1/applications/submit') {
+    if (actor.role !== 'learner') return json({ error: 'Learner access required' }, 403);
+    const idempotencyKey = request.headers.get('x-idempotency-key') || '';
+    if (idempotencyKey && submittedDemoApplications.has(idempotencyKey)) return json(submittedDemoApplications.get(idempotencyKey));
+    const body = await request.json().catch(() => ({}));
+    const application = saveDemoDraft(actor, body);
+    if (!application.ref) application.ref = nextDemoReference();
+    application.status = 'Under review';
+    application.submittedAt = new Date().toISOString();
+    application.updated = application.submittedAt;
+    for (const document of application.documents || []) document.ref = application.ref;
+    const result = { application, receipt: { reference: application.ref, submittedAt: application.submittedAt } };
+    if (idempotencyKey) submittedDemoApplications.set(idempotencyKey, result);
+    return json(result, 201);
+  }
+  if (request.method === 'POST' && url.pathname === '/v1/documents/upload-intent') {
+    if (actor.role !== 'learner') return json({ error: 'Learner access required' }, 403);
+    const body = await request.json().catch(() => ({}));
+    const contentType = String(body.contentType || '').toLowerCase();
+    const size = Number(body.size);
+    if (!['application/pdf', 'image/jpeg', 'image/png'].includes(contentType)) return json({ error: 'Only PDF, JPG, and PNG documents are accepted' }, 400);
+    if (!Number.isInteger(size) || size < 1 || size > 10_000_000) return json({ error: 'Document must be between 1 byte and 10 MB' }, 400);
+    const application = saveDemoDraft(actor, { pathway: body.pathway || 'NSC / Grade 12', pathwayValues: body.pathwayValues || {} });
+    const document = { id: 'site-demo-doc-' + crypto.randomUUID(), ref: application.ref || 'draft', ownerUserId: actor.userId, organisationId: null, type: body.type || 'other', label: body.label || 'Supporting document', filename: String(body.filename || 'upload.bin').slice(0, 255), contentType, size, checksum: null, scanState: 'not_uploaded', state: 'upload_pending' };
+    DEMO_STATE.documents ||= [];
+    DEMO_STATE.documents.push(document);
+    application.documents ||= [];
+    application.documents.push(document);
+    return json({ document: { id: document.id, uploadUrl: '/v1/documents/' + document.id + '/content', completeUrl: '/v1/documents/' + document.id + '/complete', expiresInSeconds: 900 } }, 201);
+  }
+  const documentContentMatch = url.pathname.match(/^\\/v1\\/documents\\/([^/]+)\\/(content|complete)$/);
+  if (documentContentMatch && request.method === 'PUT' && documentContentMatch[2] === 'content') {
+    const document = (DEMO_STATE.documents || []).find((item) => item.id === documentContentMatch[1]);
+    if (!document || document.ownerUserId !== actor.userId) return json({ error: 'Document not found' }, 404);
+    const content = await request.arrayBuffer();
+    if (!content.byteLength || content.byteLength > 10_000_000) return json({ error: 'Document must be between 1 byte and 10 MB' }, 400);
+    const contentType = String(request.headers.get('content-type') || document.contentType).toLowerCase();
+    if (!['application/pdf', 'image/jpeg', 'image/png'].includes(contentType)) return json({ error: 'Only PDF, JPG, and PNG documents are accepted' }, 400);
+    document.size = content.byteLength;
+    document.contentType = contentType;
+    document.checksum = 'site-demo-' + content.byteLength + '-' + Date.now();
+    document.state = 'uploaded_pending_scan';
+    document.scanState = 'pending';
+    uploadedDemoContent.set(document.id, content.byteLength);
+    return json({ document: demoDocumentResponse(document) });
+  }
+  if (documentContentMatch && request.method === 'POST' && documentContentMatch[2] === 'complete') {
+    const document = (DEMO_STATE.documents || []).find((item) => item.id === documentContentMatch[1]);
+    if (!document || document.ownerUserId !== actor.userId || !uploadedDemoContent.has(document.id)) return json({ error: 'Document upload not found' }, 404);
+    document.state = 'pending_review';
+    document.scanState = 'pending';
+    return json({ document: demoDocumentResponse(document) });
   }
   if (request.method === 'GET' && url.pathname === '/v1/notifications') return json({ notifications: DEMO_STATE.notifications.filter((item) => item.userId === actor.userId) });
   if (request.method === 'GET' && url.pathname === '/v1/applicant/chat') {
