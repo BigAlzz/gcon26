@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { applyReviewDecision, canReadApplication, createDemoApplicantPool, createInitialStore, isIntakeOpen, isReviewableApplication, issueCommunication, massDeclineApplications, nextReference, rankApplicationsByAcademicScore, recordInterviewOutcome, recordNonQualifierContact, recordPlacementResponse, recordStaffPlacement, recordTerminationLetter, reviewDocument, ROLES, saveDraft, submitApplication, updateIntakeCycle, visibleState } from './domain.mjs';
+import { applyReviewDecision, canReadApplication, createDemoApplicantPool, createInitialStore, isIntakeOpen, isReviewableApplication, issueCommunication, massDeclineApplications, nextReference, personalizeCommunicationMessage, rankApplicationsByAcademicScore, recordInterviewOutcome, recordNonQualifierContact, recordPlacementResponse, recordStaffPlacement, recordTerminationLetter, reviewDocument, ROLES, saveDraft, submitApplication, updateIntakeCycle, visibleState } from './domain.mjs';
 
 const staff = { userId: 'user-reviewer', role: ROLES.STAFF_REVIEWER, organisationId: 'org-gcon', name: 'Thandi Mokoena' };
 const supervisor = { userId: 'user-reviewer', role: ROLES.STAFF_SUPERVISOR, organisationId: 'org-gcon', name: 'Thandi Mokoena' };
@@ -283,4 +283,14 @@ test('issued communications create delivery-tracked notifications', () => {
   assert.equal(store.notifications.every((item) => item.status === 'sent'), true);
   assert.equal(store.notifications.every((item) => item.message === communication.message), true);
   assert.equal(visibleState(store, learner).notifications.length, 0);
+});
+
+test('communication variables resolve per recipient while the issued template remains reusable', () => {
+  const store = createInitialStore();
+  const application = store.applications.find((item) => item.ref === 'GCON20270731-02');
+  assert.equal(personalizeCommunicationMessage('Dear {{name}} {{surname}} - {{id}}', application), 'Dear Mpho Dlamini - 990418•••••082');
+  const communication = issueCommunication(store, staff, 'Shortlisted applicants', 'Shortlist confirmation', 'Dear {{name}} {{surname}}, your ID is {{id}}.');
+  assert.equal(communication.message, 'Dear {{name}} {{surname}}, your ID is {{id}}.');
+  const notification = store.notifications.find((item) => item.applicationRef === application.ref);
+  assert.equal(notification.message, 'Dear Mpho Dlamini, your ID is 990418•••••082.');
 });

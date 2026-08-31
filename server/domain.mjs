@@ -58,6 +58,19 @@ export function communicationMessageForTemplate(template) {
   return defaultCommunicationMessages[String(template || '')] || 'An update is available in your applicant communication history.';
 }
 
+export function personalizeCommunicationMessage(message, application) {
+  const parts = String(application?.name || 'Applicant').trim().split(/\s+/).filter(Boolean);
+  const name = parts[0] || 'Applicant';
+  const surname = parts.slice(1).join(' ') || 'Applicant';
+  const id = application?.id || application?.profile?.idNumber || 'ID not supplied';
+  return String(message || '')
+    .replaceAll('{{name}}', name)
+    .replaceAll('{{surname}}', surname)
+    .replaceAll('{{id}}', id)
+    .replaceAll('{{ID}}', id)
+    .replaceAll('{{idNumber}}', id);
+}
+
 const clone = (value) => JSON.parse(JSON.stringify(value));
 
 export function normalizeApplicationIdNumber(value) {
@@ -442,7 +455,7 @@ export function issueCommunication(store, actor, audience, template = '', messag
   store.notifications ||= [];
   store.communications.unshift(communication);
   for (const application of recipients) {
-    store.notifications.unshift({ id: crypto.randomUUID(), userId: application.ownerUserId, applicationRef: application.ref, communicationId: communication.id, channel: 'email', status: 'sent', queuedAt: issuedAt, sentAt: issuedAt, provider: communication.provider, subject: `${audience} · ${store.cycle.name}`, message: messageText });
+    store.notifications.unshift({ id: crypto.randomUUID(), userId: application.ownerUserId, applicationRef: application.ref, communicationId: communication.id, channel: 'email', status: 'sent', queuedAt: issuedAt, sentAt: issuedAt, provider: communication.provider, subject: `${audience} · ${store.cycle.name}`, message: personalizeCommunicationMessage(messageText, application) });
   }
   store.lettersIssued = true;
   addAudit(store, `${audience} communication issued`, actor, { ref: store.cycle.name, reason: `${recipients.length} notifications` });
