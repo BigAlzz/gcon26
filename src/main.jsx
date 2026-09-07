@@ -38,7 +38,8 @@ function normalizeCollegePreferences(value) {
   return [...source, '', '', '', ''].slice(0, collegeCampuses.length);
 }
 const relationshipOptions = ['Community leader', 'Councillor', 'Teacher', 'Colleague/Manager', 'Mentor', 'Pastor'];
-const resultYearOptions = Array.from({ length: 15 }, (_, index) => String(new Date().getFullYear() - index));
+const currentYear = new Date().getFullYear();
+const resultYearOptions = Array.from({ length: currentYear - 1990 + 1 }, (_, index) => String(currentYear - index));
 const approvedDocumentTypeOptions = ['Certified copy of ID', 'Statement of results / certificate'];
 const defaultProfile = {
   firstName: 'Lerato',
