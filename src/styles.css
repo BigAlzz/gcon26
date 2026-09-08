@@ -229,6 +229,9 @@ table { font-size: 13px; } th { color: #526674; font-size: 11px; } td { color: #
 .address-map-marker span { display: block; width: 18px; height: 18px; border: 3px solid #fff; border-radius: 50% 50% 50% 0; background: var(--red); box-shadow: 0 2px 5px rgba(25, 43, 38, .35); transform: rotate(-45deg); }
 .subject-note { margin: 10px 0 0; padding: 9px 11px; border-left: 3px solid #c99638; background: #fff8e9; color: #76531e; font-size: 11px; line-height: 1.45; }
 .subject-entry select { width: 100%; border: 1px solid #dce5eb; border-radius: 5px; background: #fbfcfd; color: var(--ink); padding: 10px 11px; outline: none; font-size: 11px; }
+.subject-entry { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; align-items: center; }
+.subject-remove { border: 1px solid #e1c6c1; border-radius: 5px; background: #fff; color: var(--red); padding: 9px 10px; font-size: 10px; white-space: nowrap; }
+.subject-remove:hover { background: #fff6f4; border-color: #cfaaa3; }
 .subject-source-note { margin: 10px 0 0; color: #6e818f; font-size: 10px; line-height: 1.45; }
 .subject-source-note strong { color: var(--navy); }
 .global-help-button { position: fixed; top: 52px; right: 74px; z-index: 20; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 1px solid #d5a23e; border-radius: 50%; background: var(--gold); color: #17324c; box-shadow: 0 8px 22px rgba(16, 45, 75, .22); font-size: 0; font-weight: 800; cursor: pointer; }
@@ -238,6 +241,7 @@ table { font-size: 13px; } th { color: #526674; font-size: 11px; } td { color: #
 @media (max-width: 640px) { .address-map { min-height: 230px; } }
 @media (max-width: 720px) { .global-help-button { top: 51px; right: 68px; width: 30px; height: 30px; } }
 @media (max-width: 720px) { .access-active { align-items: flex-start; flex-wrap: wrap; }.access-active .primary-button { width: 100%; margin-left: 38px; }.nonqualifier-summary, .subject-entry { grid-template-columns: 1fr; }.field-wide { grid-column: auto; } }
+.subject-entry .subject-remove { justify-self: start; }
 .sites-demo-banner { display: grid; gap: 4px; margin: 16px 0 4px; padding: 12px 13px; border: 1px solid #e5d6ad; border-radius: 6px; background: #fffaf0; }.sites-demo-banner strong { color: #765c1b; font-size: 11px; }.sites-demo-banner span { color: #8a784d; font-size: 10px; line-height: 1.5; }
 .advert-link { text-decoration: none; }
 .checker-card .pathway-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }

@@ -5,6 +5,7 @@ import 'leaflet/dist/leaflet.css';
 const GAUTENG_CENTER = [-26.2041, 28.0473];
 const DEFAULT_ZOOM = 9;
 const OSM_TILE_URL = import.meta.env.VITE_OSM_TILE_URL || 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+const OSM_FALLBACK_TILE_URL = import.meta.env.VITE_OSM_FALLBACK_TILE_URL || 'https://{s}.tile.openstreetmap.de/{z}/{x}/{y}.png';
 const NOMINATIM_URL = import.meta.env.VITE_NOMINATIM_URL || 'https://nominatim.openstreetmap.org/reverse';
 let lastReverseRequestAt = 0;
 
@@ -77,10 +78,20 @@ export function AddressMapPicker({ profile, setProfile, addressConfirmed, setAdd
       ? [Number(profile.latitude), Number(profile.longitude)]
       : GAUTENG_CENTER;
     const map = L.map(mapNode.current, { center: initial, zoom: profile.latitude ? 15 : DEFAULT_ZOOM, minZoom: 7, maxZoom: 18 });
-    L.tileLayer(OSM_TILE_URL, {
+    const tileOptions = {
       maxZoom: 19,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors',
-    }).addTo(map);
+    };
+    let tileLayer = L.tileLayer(OSM_TILE_URL, tileOptions).addTo(map);
+    let fallbackStarted = false;
+    const useFallbackTiles = () => {
+      if (fallbackStarted) return;
+      fallbackStarted = true;
+      tileLayer.off('tileerror', useFallbackTiles);
+      map.removeLayer(tileLayer);
+      tileLayer = L.tileLayer(OSM_FALLBACK_TILE_URL, tileOptions).addTo(map);
+    };
+    tileLayer.on('tileerror', useFallbackTiles);
     map.on('click', (event) => updatePin(event.latlng));
     mapRef.current = map;
     if (profile.latitude && profile.longitude) {
