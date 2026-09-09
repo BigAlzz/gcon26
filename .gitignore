@@ -3,3 +3,16 @@ dist/
 data/*.enc
 data/documents/
 *.log
+.env
+.env.*
+!.env.example
+output/
+outputs/
+tmp/
+presentation-build/
+.playwright-mcp/
+.docx-review/
+.codex-finalizer/
+tools/__pycache__/
+*.tgz
+qa-*/

@@ -72,7 +72,7 @@ Mass decline and in-app outcomes are supported in the Admissions Applications wo
 
 The local server reports its active adapter at `/v1/health` and `/v1/storage/status`. Before production, configure:
 
-- `DATABASE_URL` for the PostgreSQL adapter.
+- `GCON_DATABASE_PROVIDER=sqlserver` and `MSSQL_CONNECTION_STRING` for the implemented Microsoft SQL Server adapter. The adapter stores the current domain state in `gcon.runtime_state` with optimistic row-version protection and stores document bytes in `gcon.document_blobs` as a transitional implementation.
 - `AZURE_STORAGE_CONNECTION_STRING` for private Blob Storage.
 - `AZURE_KEY_VAULT_URI` and an external identity provider for secrets and authentication.
 - A malware scanning worker and retention policy for uploaded documents.
@@ -97,3 +97,9 @@ The local document directory is intentionally excluded from the Sites source rep
 - `GET /v1/communications`, `GET /v1/notifications`, `GET /v1/audit` and `POST /v1/communications/issue`
 
 Every state-changing endpoint emits an audit event and applies role, organisation, record-release, and workflow-transition checks.
+
+## Microsoft SQL Server adapter
+
+The API supports Microsoft SQL Server through `server/storage.mjs` and the official `mssql` driver. Set `GCON_DATABASE_PROVIDER=sqlserver` and inject `MSSQL_CONNECTION_STRING`; startup creates the idempotent runtime tables if they are missing. For controlled environments, apply `database/gcon_sqlserver_schema.sql` followed by `database/002_sqlserver_runtime_adapter.sql` with the approved migration tool instead of relying on startup DDL.
+
+The adapter uses a JSON state row to preserve the existing domain and route contract while the application is migrated from its local object model. It is not a substitute for the future fully normalised relational write model. Production must still approve SQL Server permissions, encryption, backups, retention, row-level access boundaries, secret management, and a migration path from `runtime_state` to the relational tables.

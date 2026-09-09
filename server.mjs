@@ -4,13 +4,13 @@ import { readFile } from 'node:fs/promises';
 import { URL } from 'node:url';
 import { addAudit, applyReviewDecision, canReadApplication, createOrUpdateDraft, dashboardMetrics, findApplication, hasRole, isReviewableApplication, issueCommunication, massDeclineApplications, recordInterviewOutcome, recordNonQualifierContact, recordPlacementResponse, recordStaffPlacement, recordTerminationLetter, reviewDocument, saveDraft, submitApplication, updateIntakeCycle, visibleState, CAMPUS_DIRECTORY, ROLES, APPLICATION_STATUS } from './server/domain.mjs';
 import { acceptInvitation, authenticateLocal, createInvitation, endSession, ensureAuthState, registerLearner, requireActor, requireRoles, resolveActor } from './server/auth.mjs';
-import { LocalEncryptedStore, providerStatus, publicStoragePath } from './server/storage.mjs';
+import { createConfiguredStore, providerStatus, publicStoragePath } from './server/storage.mjs';
 import { validateChecksum, validateDocumentMetadata, validateUploadedContent } from './server/upload-policy.mjs';
 import { evaluateQualification } from './src/qualification.js';
 
 const host = process.env.HOST || '127.0.0.1';
 const port = Number(process.env.PORT || 4000);
-const store = new LocalEncryptedStore();
+const store = createConfiguredStore();
 
 const sendJson = (response, status, payload, headers = {}) => {
   response.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'access-control-allow-origin': '*', 'access-control-expose-headers': 'x-request-id', ...headers });
@@ -265,7 +265,7 @@ async function handle(request, response) {
       const content = await readRaw(request);
       const contentType = String(request.headers['content-type'] || document.contentType).toLowerCase();
       const uploaded = validateUploadedContent(document, contentType, content);
-      const saved = await store.saveDocument(documentId, content);
+      const saved = await store.saveDocument(documentId, content, uploaded.contentType);
       document.size = content.length;
       document.contentType = uploaded.contentType;
       document.checksum = uploaded.checksum;

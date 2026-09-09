@@ -198,8 +198,9 @@ const seedAuditLog = [
   { id: 'audit-4', time: '10:24', event: 'Psychometric invitation queued', ref: 'GCON20270731-02', actor: 'System', actorUserId: 'system', organisationId: ORG_GCON },
 ];
 
-export function createInitialStore() {
-  const initialApplications = [...seedApplications, ...createDemoApplicantPool()];
+export function createInitialStore(options = {}) {
+  const includeDemoData = options.includeDemoData !== false;
+  const initialApplications = includeDemoData ? [...seedApplications, ...createDemoApplicantPool()] : [];
   return {
     schemaVersion: 2,
     cycle: {
@@ -215,13 +216,13 @@ export function createInitialStore() {
       campusCapacities: { ...DEFAULT_CAMPUS_CAPACITIES },
     },
     organisations: [{ id: ORG_GCON, name: 'Gauteng College of Nursing', code: 'GCON', active: true }],
-    users: [
+    users: includeDemoData ? [
       { id: 'user-learner-demo', username: '9901015808081', name: 'Lerato Mokoena', email: 'lerato.mokoena@email.com', roles: [ROLES.LEARNER], organisationIds: [] },
       { id: 'user-reviewer', name: 'Thandi Mokoena', email: 'thandi.mokoena@gcon.example', roles: [ROLES.STAFF_REVIEWER, ROLES.STAFF_SUPERVISOR], organisationIds: [ORG_GCON] },
       { id: 'user-employer', name: 'GCON Placement Team', email: 'placements@gcon.example', roles: [ROLES.EMPLOYER_COORDINATOR], organisationIds: [ORG_GCON] },
       { id: 'user-admin', name: 'Platform Administrator', email: 'admin@gcon.example', roles: [ROLES.ADMIN], organisationIds: [ORG_GCON] },
-    ],
-    memberships: [{ userId: 'user-reviewer', organisationId: ORG_GCON, role: ROLES.STAFF_REVIEWER, status: 'active' }, { userId: 'user-employer', organisationId: ORG_GCON, role: ROLES.EMPLOYER_COORDINATOR, status: 'active' }, { userId: 'user-admin', organisationId: ORG_GCON, role: ROLES.ADMIN, status: 'active' }],
+    ] : [],
+    memberships: includeDemoData ? [{ userId: 'user-reviewer', organisationId: ORG_GCON, role: ROLES.STAFF_REVIEWER, status: 'active' }, { userId: 'user-employer', organisationId: ORG_GCON, role: ROLES.EMPLOYER_COORDINATOR, status: 'active' }, { userId: 'user-admin', organisationId: ORG_GCON, role: ROLES.ADMIN, status: 'active' }] : [],
     applications: clone(initialApplications),
     auditLog: clone(seedAuditLog),
     reviewTasks: initialApplications.filter(isReviewableApplication).map((application, index) => ({ id: `review-${index + 1}`, ref: application.ref, assignedTo: 'user-reviewer', status: 'open' })),
